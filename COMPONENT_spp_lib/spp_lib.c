@@ -1,5 +1,5 @@
 /*
- * Copyright 2019, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -242,7 +242,7 @@ wiced_bool_t wiced_bt_spp_send_session_data(uint16_t handle, uint8_t *p_data, ui
     result = PORT_Write(handle, p_buf);
 
     UNUSED_VARIABLE(result);
-    SPP_TRACE("wrote %d result %d (%02x-%02x)\n", length, result, p_data[0], p_data[length - 1]);
+    //SPP_TRACE("wrote %d result %d (%02x-%02x)\n", length, result, p_data[0], p_data[length - 1]);
     return WICED_TRUE;
 }
 
@@ -252,7 +252,7 @@ wiced_bool_t wiced_bt_spp_send_session_data(uint16_t handle, uint8_t *p_data, ui
 wiced_bool_t wiced_bt_spp_can_send_more_data(uint16_t handle)
 {
     spp_scb_t *p_scb = spp_lib_get_scb_pointer( INDEX_TYPE_PORT_HANDLE , handle );
-    SPP_TRACE("SPP pool count:%d free:%d flow_off:%d\n", GKI_poolcount(SPP_BUFFER_POOL), GKI_poolfreecount(SPP_BUFFER_POOL), p_scb->flow_control_on);
+    //SPP_TRACE("SPP pool count:%d free:%d flow_off:%d\n", GKI_poolcount(SPP_BUFFER_POOL), GKI_poolfreecount(SPP_BUFFER_POOL), p_scb->flow_control_on);
     return ((GKI_poolfreecount(SPP_BUFFER_POOL) > GKI_poolcount(SPP_BUFFER_POOL) / 2) && !p_scb->flow_control_on);
 }
 
@@ -603,13 +603,13 @@ void spp_port_event_cback(wiced_bt_rfcomm_port_event_t event, uint16_t handle)
     {
         if ((PORT_Read(handle, &p_buf) == PORT_SUCCESS) && (p_buf != NULL))
         {
-            SPP_TRACE("rfcomm_data: len:%d handle %x data (%02x-%02x)\n", p_buf->len, handle,
-                    *((uint8_t *)(p_buf + 1) + p_buf->offset), *((uint8_t *)(p_buf + 1) + p_buf->offset + p_buf->len - 1));
+//            SPP_TRACE("rfcomm_data: len:%d handle %x data (%02x-%02x)\n", p_buf->len, handle,
+//                    *((uint8_t *)(p_buf + 1) + p_buf->offset), *((uint8_t *)(p_buf + 1) + p_buf->offset + p_buf->len - 1));
 
             spp_bytes_rxed += p_buf->len;
 
-            SPP_TRACE("spp_session_data: len:%u, total: %u (session %x data %02x-%02x)\n",
-                p_buf->len, spp_bytes_rxed, handle, *((uint8_t *)(p_buf + 1) + p_buf->offset), *((uint8_t *)(p_buf + 1) + p_buf->offset + p_buf->len - 1));
+//            SPP_TRACE("spp_session_data: len:%u, total: %u (session %x data %02x-%02x)\n",
+//                p_buf->len, spp_bytes_rxed, handle, *((uint8_t *)(p_buf + 1) + p_buf->offset), *((uint8_t *)(p_buf + 1) + p_buf->offset + p_buf->len - 1));
 
             p_scb->p_spp_reg->p_rx_data_callback(handle, (uint8_t *)(p_buf + 1) + p_buf->offset, p_buf->len);
             GKI_freebuf(p_buf);
