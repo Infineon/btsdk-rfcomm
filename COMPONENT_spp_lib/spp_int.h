@@ -78,6 +78,7 @@ typedef struct
     void        *p_sdp_discovery_db;                /* pointer to discovery database */
     uint32_t    flow_control_on;
     wiced_bt_spp_reg_t *p_spp_reg;             /* pointer to application call backs */
+    wiced_bt_rfcomm_port_event_t event_error;  /* reflect PORT_EV_ERR */
 } spp_scb_t;
 
 extern BD_ADDR              bd_addr_connected;

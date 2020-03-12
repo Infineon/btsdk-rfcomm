@@ -146,7 +146,7 @@ typedef UINT16 wiced_mce_int_evt_t;
 #define WICED_MCE_INST_ID_MASK        0x0000000f
 #define WICED_MCE_TPARAM_TO_CCB_IDX(timer_param)              ((timer_param >> 8) & WICED_MCE_CCB_IDX_MASK)
 #define WICED_MCE_TPARAM_TO_INST_ID(timer_param)              (timer_param & WICED_MCE_INST_ID_MASK)
-#define WICED_MCE_CCB_INST_TO_TPARAM(ccb_idx, inst_id)        (((ccb_idx & WICED_MCE_CCB_IDX_MASK) << 8) & (inst_id & WICED_MCE_INST_ID_MASK))
+#define WICED_MCE_CCB_INST_TO_TPARAM(ccb_idx, inst_id)        (((ccb_idx & WICED_MCE_CCB_IDX_MASK) << 8) | (inst_id & WICED_MCE_INST_ID_MASK))
 
 /* active mas obex operation (Valid in connected state) */
 #define WICED_MCE_OP_NONE         0

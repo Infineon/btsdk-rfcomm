@@ -48,7 +48,6 @@
 #include "wiced_timer.h"
 #include "wiced_bt_obex.h"
 
-
 #define RFCOMM_MIN_OFFSET           5       /* from rfc_defs.h */
 #define PORT_SUCCESS                0       /* from port_api.h */
 
@@ -440,6 +439,7 @@ typedef struct
     BUFFER_Q        rx_q;               /* received data buffer queue       */
     BOOLEAN         stopped;            /* TRUE, if flow control the peer (stop peer from sending more data). */
     BT_HDR          *p_rxmsg;           /* The message received from peer */
+    BOOLEAN          b_connected;		/* Set this to TRUE and check before port write */
 } tOBEX_PORT_CB;
 
 typedef struct

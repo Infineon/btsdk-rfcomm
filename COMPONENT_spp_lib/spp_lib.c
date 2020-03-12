@@ -241,9 +241,17 @@ wiced_bool_t wiced_bt_spp_send_session_data(uint16_t handle, uint8_t *p_data, ui
     p_buf->len    = length;
     result = PORT_Write(handle, p_buf);
 
-    UNUSED_VARIABLE(result);
+    // port_write error is not returned from firmware, so check event history
+    if(!result)
+    {
+        spp_scb_t *p_scb = spp_lib_get_scb_pointer( INDEX_TYPE_PORT_HANDLE , handle );
+        if(NULL != p_scb)
+        {
+            result |= p_scb->event_error;
+        }
+    }
     //SPP_TRACE("wrote %d result %d (%02x-%02x)\n", length, result, p_data[0], p_data[length - 1]);
-    return WICED_TRUE;
+    return (result == 0) ? WICED_TRUE : WICED_FALSE;
 }
 
 /*
@@ -252,8 +260,17 @@ wiced_bool_t wiced_bt_spp_send_session_data(uint16_t handle, uint8_t *p_data, ui
 wiced_bool_t wiced_bt_spp_can_send_more_data(uint16_t handle)
 {
     spp_scb_t *p_scb = spp_lib_get_scb_pointer( INDEX_TYPE_PORT_HANDLE , handle );
-    //SPP_TRACE("SPP pool count:%d free:%d flow_off:%d\n", GKI_poolcount(SPP_BUFFER_POOL), GKI_poolfreecount(SPP_BUFFER_POOL), p_scb->flow_control_on);
-    return ((GKI_poolfreecount(SPP_BUFFER_POOL) > GKI_poolcount(SPP_BUFFER_POOL) / 2) && !p_scb->flow_control_on);
+
+    if( p_scb == NULL )
+    {
+        SPP_TRACE( "ERROR wiced_bt_spp_can_send_more_data - cannot find scb based on handle %d\n", handle );
+        return WICED_FALSE;
+    }
+    else
+    {
+        //SPP_TRACE("SPP pool count:%d free:%d flow_off:%d\n", GKI_poolcount(SPP_BUFFER_POOL), GKI_poolfreecount(SPP_BUFFER_POOL), p_scb->flow_control_on);
+        return ((GKI_poolfreecount(SPP_BUFFER_POOL) > GKI_poolcount(SPP_BUFFER_POOL) / 2) && !p_scb->flow_control_on);
+    }
 }
 
 /*
@@ -545,6 +562,7 @@ void spp_sdp_start_discovery(spp_scb_t *p_scb)
 {
     uint16_t        attr_list[4];
     uint8_t         num_attr;
+    wiced_bool_t    result;
 
     /* We need to get Service Class (to compare UUID and Protocol Description to get SCN to connect */
     attr_list[0] = ATTR_ID_SERVICE_CLASS_ID_LIST;
@@ -555,10 +573,10 @@ void spp_sdp_start_discovery(spp_scb_t *p_scb)
     p_scb->p_sdp_discovery_db = wiced_bt_get_buffer(1024);
 
     /* set up service discovery database; attr happens to be attr_list len */
-    wiced_bt_sdp_init_discovery_db((wiced_bt_sdp_discovery_db_t *)p_scb->p_sdp_discovery_db, 1024, 1, &spp_uuid, num_attr, attr_list);
+    result = wiced_bt_sdp_init_discovery_db((wiced_bt_sdp_discovery_db_t *)p_scb->p_sdp_discovery_db, 1024, 1, &spp_uuid, num_attr, attr_list);
 
     /* initiate service discovery */
-    if (!wiced_bt_sdp_service_search_attribute_request(p_scb->server_addr, (wiced_bt_sdp_discovery_db_t *)p_scb->p_sdp_discovery_db, &spp_sdp_cback))
+    if ((result == WICED_FALSE) || (!wiced_bt_sdp_service_search_attribute_request(p_scb->server_addr, (wiced_bt_sdp_discovery_db_t *)p_scb->p_sdp_discovery_db, &spp_sdp_cback)))
     {
         /* Service discovery not initiated - free discover db, reopen server, tell app  */
         spp_sdp_free_db(p_scb);
@@ -624,6 +642,7 @@ void spp_port_event_cback(wiced_bt_rfcomm_port_event_t event, uint16_t handle)
     {
         p_scb->flow_control_on = WICED_FALSE;
     }
+    p_scb->event_error = (event & PORT_EV_ERR) ? 1 : 0;
 }
 
 static spp_scb_t* spp_lib_get_scb_pointer( spp_scb_index_type_t index, uint16_t port_handle )

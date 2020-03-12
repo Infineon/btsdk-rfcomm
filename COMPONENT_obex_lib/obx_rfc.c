@@ -114,6 +114,11 @@ void obx_rfc_mgmt_cback(wiced_bt_rfcomm_result_t port_status, UINT16 port_handle
     {
         code = (port_status == WICED_BT_RFCOMM_SUCCESS) ? PORT_EV_CONNECTED : PORT_EV_CONNECT_ERR;
         obx_rfc_snd_evt (p_pcb, code);
+
+        p_pcb->b_connected = (code == PORT_EV_CONNECTED) ? TRUE : FALSE;
+
+        if (p_pcb->b_connected && p_pcb->p_txmsg != NULL)
+            obx_rfc_snd_msg(p_pcb);
     }
     else
     {
@@ -347,22 +352,24 @@ BT_HDR * obx_build_dummy_rsp(tOBEX_SR_SESS_CB *p_scb, UINT8 rsp_code)
     UINT8   *p;
     UINT16  size = 3;
 
-    p_pkt   = (BT_HDR *)wiced_bt_obex_header_init(p_scb->ll_cb.comm.handle, OBEX_CMD_POOL_SIZE);
-    p = (UINT8 *)(p_pkt+1)+p_pkt->offset+p_pkt->len;
-    *p++    = (rsp_code|OBEX_FINAL);
-    if (p_scb->conn_id)
+    if ((p_pkt = (BT_HDR *)wiced_bt_obex_header_init(p_scb->ll_cb.comm.handle, OBEX_CMD_POOL_SIZE)) != NULL)
     {
-        size += 5;
-        UINT16_TO_BE_STREAM(p, size);
-        *p++    = OBEX_HI_CONN_ID;
-        UINT32_TO_BE_STREAM(p, p_scb->conn_id);
+        p = (UINT8 *)(p_pkt+1)+p_pkt->offset+p_pkt->len;
+        *p++    = (rsp_code|OBEX_FINAL);
+        if (p_scb->conn_id)
+        {
+            size += 5;
+            UINT16_TO_BE_STREAM(p, size);
+            *p++    = OBEX_HI_CONN_ID;
+            UINT32_TO_BE_STREAM(p, p_scb->conn_id);
+        }
+        else
+        {
+            UINT16_TO_BE_STREAM(p, size);
+        }
+        p_pkt->len   = size;
+        p_pkt->event = OBEX_PUT_RSP_EVT; /* or OBEX_GET_RSP_EVT: for tracing purposes */
     }
-    else
-    {
-        UINT16_TO_BE_STREAM(p, size);
-    }
-    p_pkt->len   = size;
-    p_pkt->event = OBEX_PUT_RSP_EVT; /* or OBEX_GET_RSP_EVT: for tracing purposes */
     return p_pkt;
 }
 
@@ -603,10 +610,16 @@ BOOLEAN obx_rfc_snd_msg(tOBEX_PORT_CB *p_pcb)
 {
     BOOLEAN status = FALSE;
     UINT16  bytes_written = 0;
+    wiced_result_t result;
+
+    if(p_pcb->b_connected == FALSE)
+        return TRUE;
 
     obx_stop_timer(&p_pcb->tle);
-    wiced_bt_rfcomm_write_data(p_pcb->port_handle, ((char*)(p_pcb->p_txmsg + 1)) + p_pcb->p_txmsg->offset,
-               p_pcb->p_txmsg->len, &bytes_written);
+
+    result = wiced_bt_rfcomm_write_data(p_pcb->port_handle, ((char*)(p_pcb->p_txmsg + 1)) + p_pcb->p_txmsg->offset, p_pcb->p_txmsg->len, &bytes_written);
+
+    OBEX_TRACE_DEBUG4("obx_rfc_snd_msg port_handle:%d, port.handle:0x%x result:%d written:%d", p_pcb->port_handle, p_pcb->handle, result, bytes_written);
 
     obx_start_timer ((tOBEX_COMM_CB *)p_pcb);
 

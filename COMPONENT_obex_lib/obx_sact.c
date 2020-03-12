@@ -231,8 +231,8 @@ static UINT8 obx_verify_target(tOBEX_SR_CB *p_cb, tOBEX_SR_SESS_CB *p_scb, BT_HD
 
     /* If target header does not exist, p_target would remain the default value/NULL
        and len would be set to 0. There's no need to check the return value of
-       OBEX_ReadTargetHdr */
-    wiced_bt_obex_find_byte_sequence_header((UINT8 *)p_pkt, OBEX_HI_TARGET, &p_target, &len);
+       OBEX_ReadByteStrHdr.  Cast return to void to let Coverity know */
+    (void)wiced_bt_obex_find_byte_sequence_header((UINT8 *)p_pkt, OBEX_HI_TARGET, &p_target, &len);
 
     if (p_cb->target.len)
     {

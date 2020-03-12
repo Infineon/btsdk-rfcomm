@@ -290,8 +290,8 @@ void wiced_bt_pbc_proc_list_data(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_obx_evt_t
             app_evt.list.p_param = wiced_bt_pbc_proc_pbap_param(&param, p_evt->p_pkt);
         }
 
-        /* coverity[CHECKED_RETURN] False-positive: need to get the len or if is the final packet */
-        wiced_bt_obex_find_body_header((UINT8 *)p_evt->p_pkt, &app_evt.list.data, &app_evt.list.len,
+        /* Return ignored. void cast for coverity checker */
+        (void) wiced_bt_obex_find_body_header((UINT8 *)p_evt->p_pkt, &app_evt.list.data, &app_evt.list.len,
                         &app_evt.list.final);
 
         /* len > 0 or is final packet */

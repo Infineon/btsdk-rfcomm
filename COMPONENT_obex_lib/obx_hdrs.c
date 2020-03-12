@@ -144,21 +144,21 @@ wiced_bt_obex_status_t wiced_bt_obex_add_header(uint8_t *p_pkt, wiced_bt_obex_he
     {
     case OBEX_HI_TYPE_UNIC:
         {
-            uint16_t len = 0;
+            uint16_t len_data = 0;
             uint16_t *p_unicode = NULL;
 
             if(p_data)
             {
-                len = strlen((char *)p_data) + 1;
-                p_unicode = (uint16_t *)GKI_getbuf((uint16_t)(len*2));
+                len_data = strlen((char *)p_data) + 1;
+                p_unicode = (uint16_t *)GKI_getbuf((uint16_t)(len_data*2));
             }
 
             if(p_unicode)
-                len = OBEX_CharToWchar(p_unicode, (char *)p_data, len);
+                len_data = OBEX_CharToWchar(p_unicode, (char *)p_data, len_data);
             else
-                len = 0;
+                len_data = 0;
 
-            status = OBEX_AddUnicodeHdr((BT_HDR *)p_pkt, OBEX_HI_NAME, p_unicode, len);
+            status = OBEX_AddUnicodeHdr((BT_HDR *)p_pkt, OBEX_HI_NAME, p_unicode, len_data);
 
             if(p_unicode)
                 GKI_freebuf(p_unicode);

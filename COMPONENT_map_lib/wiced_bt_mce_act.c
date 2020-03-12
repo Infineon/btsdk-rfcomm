@@ -481,7 +481,7 @@ void wiced_mce_ma_push_msg(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_dat
     wiced_bool_t                final = p_param->is_final;
     wiced_bt_mce_push_msg_t     app_evt;
     UINT8                       *p, *p_start;
-    UINT16                      len;
+    UINT16                      len = 0;
 
     APPL_TRACE_EVENT0("wiced_mce_ma_push_msg\n");
 
@@ -496,45 +496,50 @@ void wiced_mce_ma_push_msg(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_dat
             wiced_bt_obex_add_header((uint8_t *)p_obx->p_pkt, OBEX_HI_TYPE, p, strlen((char *)p) + 1);
 
             /* add name header */
-            wiced_bt_obex_add_header_utf8((UINT8 *)p_obx->p_pkt, OBEX_HI_NAME, (UINT8 *)p_param->p_folder);
-
-            /* add application header */
-            p_start = wiced_bt_obex_add_byte_sequence_start((uint8_t *)p_obx->p_pkt, &len);
-            p = p_start;
-
-            *p ++ = WICED_BT_MA_APH_CHARSET;
-            *p ++ = 1;
-            *p ++ = p_param->charset ;
-
-            if (p_param->transparent != WICED_BT_MA_TRANSP_UNKNOWN)
+            if (!wiced_bt_obex_add_header_utf8((UINT8 *)p_obx->p_pkt, OBEX_HI_NAME, (UINT8 *)p_param->p_folder))
             {
-                *p ++ = WICED_BT_MA_APH_TRANSPARENT;
+                utl_freebuf((void**)&p_obx->p_pkt);
+            }
+            else
+            {
+                /* add application header */
+                p_start = wiced_bt_obex_add_byte_sequence_start((uint8_t *)p_obx->p_pkt, &len);
+                p = p_start;
+
+                *p ++ = WICED_BT_MA_APH_CHARSET;
                 *p ++ = 1;
-                *p ++ = p_param->transparent;
+                *p ++ = p_param->charset ;
+
+                if (p_param->transparent != WICED_BT_MA_TRANSP_UNKNOWN)
+                {
+                    *p ++ = WICED_BT_MA_APH_TRANSPARENT;
+                    *p ++ = 1;
+                    *p ++ = p_param->transparent;
+                }
+
+                if (p_param->retry != WICED_BT_MA_RETRY_UNKNOWN)
+                {
+                    *p ++ = WICED_BT_MA_APH_RETRY;
+                    *p ++ = 1;
+                    *p ++ = p_param->retry;
+                }
+
+                wiced_bt_obex_add_byte_sequence_end((uint8_t *)p_obx->p_pkt, OBEX_HI_APP_PARMS, (UINT16)(p - p_start));
+
+                /* Add the body header to the packet */
+                wiced_bt_obex_add_header((uint8_t *)p_obx->p_pkt,
+                        p_param->is_final ? OBEX_HI_BODY_END : OBEX_HI_BODY,
+                        p_param->p_msg, p_param->len);
+
+                APPL_TRACE_EVENT1("OBEX Send out %d bytes message data\n", p_param->len);
+                if (wiced_bt_obex_send_request(p_icb->obx_handle, OBEX_REQ_PUT, (wiced_bt_obex_req_param_t*)&final, (uint8_t *)p_obx->p_pkt) == OBEX_SUCCESS)
+                {
+                    p_icb->obx_oper = WICED_MCE_OP_PUSH_MSG;
+                    p_icb->req_pending = TRUE;
+                    status = WICED_BT_MA_STATUS_OK;
+                }
+                p_obx->p_pkt = NULL;
             }
-
-            if (p_param->retry != WICED_BT_MA_RETRY_UNKNOWN)
-            {
-                *p ++ = WICED_BT_MA_APH_RETRY;
-                *p ++ = 1;
-                *p ++ = p_param->retry;
-            }
-
-            wiced_bt_obex_add_byte_sequence_end((uint8_t *)p_obx->p_pkt, OBEX_HI_APP_PARMS, (UINT16)(p - p_start));
-
-            /* Add the body header to the packet */
-            wiced_bt_obex_add_header((uint8_t *)p_obx->p_pkt,
-                    p_param->is_final ? OBEX_HI_BODY_END : OBEX_HI_BODY,
-                    p_param->p_msg, p_param->len);
-
-            APPL_TRACE_EVENT1("OBEX Send out %d bytes message data\n", p_param->len);
-            if (wiced_bt_obex_send_request(p_icb->obx_handle, OBEX_REQ_PUT, (wiced_bt_obex_req_param_t*)&final, (uint8_t *)p_obx->p_pkt) == OBEX_SUCCESS)
-            {
-                p_icb->obx_oper = WICED_MCE_OP_PUSH_MSG;
-                p_icb->req_pending = TRUE;
-                status = WICED_BT_MA_STATUS_OK;
-            }
-            p_obx->p_pkt = NULL;
         }
     }
 

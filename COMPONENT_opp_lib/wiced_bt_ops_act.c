@@ -348,6 +348,7 @@ void wiced_bt_ops_ci_open(wiced_bt_ops_cb_t *p_cb, wiced_bt_ops_data_t *p_data)
     UINT8                num_hdrs;
     BOOLEAN              endpkt;
     char                *p_name;
+    uint8_t              ret;
 
     p_cb->cout_active = FALSE;
 
@@ -374,7 +375,12 @@ void wiced_bt_ops_ci_open(wiced_bt_ops_cb_t *p_cb, wiced_bt_ops_data_t *p_data)
             else
                 p_name++;   /* increment past the file separator */
 
-            wiced_bt_obex_add_header_utf8((UINT8 *)p_obx->p_pkt, OBEX_HI_NAME, (UINT8 *) p_name);
+            ret = wiced_bt_obex_add_header_utf8((UINT8 *)p_obx->p_pkt, OBEX_HI_NAME, (UINT8 *) p_name);
+            if(ret != OBEX_SUCCESS)
+            {
+               WICED_BT_TRACE("wiced_bt_obex_add_header_utf8 return %d", ret);
+            }
+
 
             if (p_cb->file_length != WICED_BT_OPS_LEN_UNKNOWN)
             {

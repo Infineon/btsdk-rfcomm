@@ -561,7 +561,7 @@ static void wiced_mce_discover_cback(UINT16 status)
         {
             /* Init rest of the fields for callback data */
             dis.rec[cnt].peer_features = WICED_BT_MA_DEFAULT_SUPPORTED_FEATURES;
-            dis.rec[cnt].version = WICED_BT_MA_VERSION_1_0;
+            dis.rec[cnt].rec_version = WICED_BT_MA_VERSION_1_0;
 
             /* get next record; if none found, we're done */
             if ((p_rec = wiced_bt_sdp_find_service_in_db(p_cb->p_api_dis_db, UUID_SERVCLASS_MESSAGE_ACCESS,
@@ -596,12 +596,12 @@ static void wiced_mce_discover_cback(UINT16 status)
 
 
             /* this is a mandatory attribute */
-            wiced_bt_sdp_find_profile_version_in_rec (p_rec, UUID_SERVCLASS_MAP_PROFILE, &dis.rec[cnt].version);
-            APPL_TRACE_EVENT1("wiced_mce_discover_cback found version=%d\n", dis.rec[cnt].version);
+            wiced_bt_sdp_find_profile_version_in_rec (p_rec, UUID_SERVCLASS_MAP_PROFILE, &dis.rec[cnt].rec_version);
+            APPL_TRACE_EVENT1("wiced_mce_discover_cback found version=%d\n", dis.rec[cnt].rec_version);
 
 #if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
             /* If profile version is 1.2 or greater, look for supported features and L2CAP PSM */
-            if (dis.rec[cnt].version >= BTA_MA_VERSION_1_2)
+            if (dis.rec[cnt].rec_version >= BTA_MA_VERSION_1_2)
             {
 
                 /* Look for peer supported features */
@@ -969,7 +969,7 @@ static wiced_mce_inst_cb_t *wiced_mce_alloc_icb(wiced_bt_ma_inst_id_t inst_id, U
             wiced_mce_cb.ccb[ccb_idx].icb[i].in_use = TRUE;
             wiced_init_timer(&wiced_mce_cb.ccb[ccb_idx].icb[i].rsp_timer,
                              wiced_mce_rsp_timer_cback,
-                             (UINT32)WICED_MCE_CCB_INST_TO_TPARAM(ccb_idx, inst_id),
+                             (UINT32)WICED_MCE_CCB_INST_TO_TPARAM(((UINT16)ccb_idx), inst_id),
                              WICED_SECONDS_TIMER);
 
             APPL_TRACE_DEBUG1("Find an empty control block idx = %d\n", i);
