@@ -62,6 +62,9 @@
 
 #undef  OBEX_LRG_DATA_POOL_SIZE
 #define OBEX_LRG_DATA_POOL_SIZE     1024
+#ifndef OBX_LRG_DATA_POOL_SIZE
+#define OBX_LRG_DATA_POOL_SIZE      1024
+#endif
 
 typedef wiced_bt_obex_status_t (tBTA_MA_OBX_RSP) (wiced_bt_obex_handle_t handle, UINT8 rsp_code, BT_HDR *p_pkt);
 

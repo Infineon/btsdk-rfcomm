@@ -41,7 +41,9 @@
 *****************************************************************************/
 
 #include <string.h>
+#ifndef CYW43012
 #include "data_types.h"
+#endif
 #include "wiced_bt_obex.h"
 #include "obx_int.h"
 #include "wiced_bt_l2c.h"
