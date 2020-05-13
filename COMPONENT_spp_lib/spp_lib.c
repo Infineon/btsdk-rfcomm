@@ -50,6 +50,7 @@
 #include "hci_control_api.h"
 #include "spp_int.h"
 #include "wiced_bt_rfcomm.h"
+#include "wiced_bt_utils.h"
 
 /*****************************************************************************
 **  Constants
@@ -60,9 +61,9 @@
 *****************************************************************************/
 typedef enum
 {
-    INDEX_TYPE_FIRST_AVAILABLE,
     INDEX_TYPE_PORT_HANDLE,
-    INDEX_TYPE_STATE,
+    INDEX_TYPE_STATE_OPENING,
+	INDEX_TYPE_STATE_IDLE,
 } spp_scb_index_type_t;
 
 /******************************************************
@@ -71,11 +72,6 @@ typedef enum
 
 // Session control block.  Currently support 1.
 spp_scb_t   spp_scb[SPP_MAX_CONNECTIONS];
-
-/* global constant for "any" bd addr */
-BD_ADDR     bd_addr_any  = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-BD_ADDR     bd_addr_null = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-
 
 BD_ADDR     bd_addr_connected;
 
@@ -143,12 +139,18 @@ wiced_result_t wiced_bt_spp_startup(wiced_bt_spp_reg_t* p)
 wiced_result_t wiced_bt_spp_connect(BD_ADDR bd_addr)
 {
     int                          i;
-    spp_scb_t *p_scb = spp_lib_get_scb_pointer( INDEX_TYPE_FIRST_AVAILABLE , 0 );
+    spp_scb_t *p_scb = spp_lib_get_scb_pointer( INDEX_TYPE_STATE_IDLE , 0 );
 
     if( p_scb == NULL )
         return WICED_BT_NO_RESOURCES;
 
-    p_scb->in_use = WICED_TRUE;
+    if(p_scb->in_use == WICED_FALSE)
+    {
+	/* Initialize SCB and link callbacks to spp_scb[0] */
+	memset( p_scb, 0, sizeof(spp_scb_t) );
+	p_scb->p_spp_reg = spp_scb[0].p_spp_reg;
+	p_scb->in_use = WICED_TRUE;
+    }
 
     if (p_scb->state != SPP_SESSION_STATE_IDLE)
     {
@@ -165,8 +167,13 @@ wiced_result_t wiced_bt_spp_connect(BD_ADDR bd_addr)
     /* close RFCOMM server, if listening on this SCB */
     if (p_scb->rfc_serv_handle)
     {
-        wiced_bt_rfcomm_remove_connection ( p_scb->rfc_serv_handle, WICED_FALSE );
+        wiced_bt_rfcomm_remove_connection ( p_scb->rfc_serv_handle, WICED_TRUE );
         p_scb->rfc_serv_handle = 0;
+    }
+    else
+    {
+	/* Setting server handle to invalid to prevent incorrectly starting server upon disconnection */
+	p_scb->rfc_serv_handle = RFCOMM_INVALID_HANDLE;
     }
 
     /* set role */
@@ -322,7 +329,11 @@ void spp_rfcomm_start_server(spp_scb_t *p_scb)
 
     p_scb->state = SPP_SESSION_STATE_IDLE;
 
-    if (!p_scb->rfc_serv_handle)
+    if(p_scb->rfc_serv_handle == RFCOMM_INVALID_HANDLE)
+    {
+        p_scb->rfc_serv_handle = 0;
+    }
+    else if (!p_scb->rfc_serv_handle)
     {
         rfcomm_result = wiced_bt_rfcomm_create_connection(UUID_SERVCLASS_SERIAL_PORT,
                                                            p_scb->p_spp_reg->rfcomm_scn, WICED_TRUE, p_scb->p_spp_reg->rfcomm_mtu,
@@ -348,13 +359,6 @@ void spp_rfcomm_start_server(spp_scb_t *p_scb)
 void spp_rfcomm_do_open(spp_scb_t *p_scb)
 {
     wiced_bt_rfcomm_result_t rfcomm_result;
-
-    /* Close the server, if listening on this SCB */
-    if (p_scb->rfc_serv_handle)
-    {
-        wiced_bt_rfcomm_remove_connection ( p_scb->rfc_serv_handle, WICED_FALSE );
-        p_scb->rfc_serv_handle = 0;
-    }
 
     rfcomm_result = wiced_bt_rfcomm_create_connection(UUID_SERVCLASS_SERIAL_PORT,
                                                       p_scb->server_scn, WICED_FALSE,
@@ -394,9 +398,6 @@ void spp_rfcomm_do_close(spp_scb_t *p_scb)
     {
         spp_rfcomm_start_server (p_scb);
     }
-
-    if( p_scb->rfc_serv_handle == 0 )
-        p_scb->in_use = WICED_FALSE;
 }
 
 
@@ -480,7 +481,7 @@ void spp_rfcomm_acceptor_opened(spp_scb_t *p_scb)
  */
 static void spp_sdp_cback(uint16_t sdp_status)
 {
-    spp_scb_t *p_scb = spp_lib_get_scb_pointer( INDEX_TYPE_STATE , 0 );
+    spp_scb_t *p_scb = spp_lib_get_scb_pointer( INDEX_TYPE_STATE_OPENING , 0 );
 
     if( p_scb == NULL )
     {
@@ -526,12 +527,12 @@ wiced_bool_t spp_sdp_find_attr(spp_scb_t *p_scb)
     wiced_bt_sdp_protocol_elem_t        pe;
     wiced_bool_t                        result = WICED_TRUE;
 
-    SPP_TRACE("Looking for SPP service");
+    SPP_TRACE("Looking for SPP service\n");
 
     p_rec = wiced_bt_sdp_find_service_uuid_in_db((wiced_bt_sdp_discovery_db_t *)p_scb->p_sdp_discovery_db, &spp_uuid, p_rec);
     if (p_rec == NULL)
     {
-        SPP_TRACE("spp_sdp_find_attr() - could not find SPP service");
+        SPP_TRACE("spp_sdp_find_attr() - could not find SPP service\n");
         return (WICED_FALSE);
     }
 
@@ -647,19 +648,24 @@ void spp_port_event_cback(wiced_bt_rfcomm_port_event_t event, uint16_t handle)
 
 static spp_scb_t* spp_lib_get_scb_pointer( spp_scb_index_type_t index, uint16_t port_handle )
 {
-    spp_scb_t *p_scb;
     uint8_t i;
     wiced_bool_t spp_scb_found = WICED_FALSE;
 
     for( i = 0; i < SPP_MAX_CONNECTIONS; i++ )
     {
-        if (((index == INDEX_TYPE_PORT_HANDLE) && (spp_scb[i].rfc_serv_handle == port_handle)) ||
-            ((index == INDEX_TYPE_STATE) && (spp_scb[i].state == SPP_SESSION_STATE_OPENING  )) ||
-            ((index == INDEX_TYPE_FIRST_AVAILABLE) && (spp_scb[i].in_use == WICED_FALSE     )) )
+        if (((index == INDEX_TYPE_PORT_HANDLE) && (spp_scb[i].rfc_serv_handle == port_handle      )) ||
+            ((index == INDEX_TYPE_PORT_HANDLE) && (spp_scb[i].rfc_conn_handle == port_handle      )) ||
+            ((index == INDEX_TYPE_STATE_OPENING) && (spp_scb[i].state == SPP_SESSION_STATE_OPENING)) ||
+            ((index == INDEX_TYPE_STATE_IDLE) && (spp_scb[i].state == SPP_SESSION_STATE_IDLE      )) )
             spp_scb_found = WICED_TRUE;
 
         if( spp_scb_found )
             return &spp_scb[i];
     }
     return NULL;
+}
+
+uint8_t wiced_bt_spp_port_purge(uint16_t handle, uint8_t purge_flags)
+{
+	return PORT_Purge(handle, purge_flags);
 }

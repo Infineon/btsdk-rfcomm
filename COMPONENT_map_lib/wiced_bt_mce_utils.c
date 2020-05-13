@@ -46,6 +46,7 @@
 #include "wiced_bt_types.h"
 
 #include "wiced_bt_mce_int.h"
+#include "wiced_bt_utils.h"
 
 /*******************************************************************************
 **
@@ -1431,14 +1432,6 @@ BOOLEAN wiced_mce_find_obx_handle_match_mn_cb_index(wiced_bt_obex_handle_t obx_h
     return found;
 }
 
-void utl_freebuf(void ** pp_buf)
-{
-    if (*pp_buf)
-        GKI_freebuf(*pp_buf);
-
-    *pp_buf = NULL;
-}
-
 #if 0
 /*******************************************************************************
 **
@@ -1557,7 +1550,7 @@ void wiced_mce_pm_conn_open(BD_ADDR bd_addr)
 
             p_pcb->in_use = TRUE;
             p_pcb->opened = TRUE;
-            bdcpy(p_pcb->bd_addr, bd_addr);
+            utl_bdcpy(p_pcb->bd_addr, bd_addr);
             bta_sys_conn_open(BTA_ID_MCE , wiced_mce_cb.app_id, bd_addr);
         }
     }

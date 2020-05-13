@@ -364,7 +364,10 @@ const wiced_mce_mn_st_tbl_t wiced_mce_mn_st_tbl[] =
 *****************************************************************************/
 
 /* MCE control block */
-wiced_mce_cb_t  wiced_mce_cb;
+wiced_mce_cb_t  wiced_mce_cb =
+{
+    .is_enabled = FALSE
+};
 
 #if (WICED_MCE_DEBUG == TRUE) && (BT_USE_TRACES == TRUE)
 static char *mce_evt_code(wiced_mce_int_evt_t evt_code);

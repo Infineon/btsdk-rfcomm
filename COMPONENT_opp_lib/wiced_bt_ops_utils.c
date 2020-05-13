@@ -42,6 +42,7 @@
 #include "wiced_bt_obex.h"
 #include "wiced_bt_ops_int.h"
 #include "wiced_bt_ops_co.h"
+#include "wiced_bt_utils.h"
 
 /*******************************************************************************
 **  Constants
@@ -58,7 +59,6 @@ static int wiced_bt_ops_stricmp (const char *p_str1, const char *p_str2);
 uint16_t wiced_bt_obex_read_header_len(uint8_t *p_pkt, wiced_bt_obex_header_identifier_t id);
 uint8_t * wiced_bt_obex_add_body_start(uint8_t *p_pkt, uint16_t *p_len);
 void wiced_bt_obex_add_body_end(uint8_t *p_pkt, uint8_t *p_body, uint16_t len, wiced_bool_t end);
-char *utl_strrchr(char *s, int c);
 /*******************************************************************************
 **
 ** Function         wiced_bt_ops_init_get_obj
@@ -322,7 +322,7 @@ void wiced_bt_ops_req_app_access (wiced_bt_op_oper_t oper, wiced_bt_ops_cb_t *p_
         p_acc_evt->size = p_cb->file_length;
         p_acc_evt->oper = p_cb->acc_active = oper;
         p_acc_evt->format = p_cb->obj_fmt;
-        bdcpy(p_acc_evt->bd_addr, p_cb->bd_addr);
+        utl_bdcpy(p_acc_evt->bd_addr, p_cb->bd_addr);
 
         /* Only pass the object type if Push operation */
         if (oper == WICED_BT_OP_OPER_PUSH)
@@ -504,7 +504,7 @@ static int wiced_bt_ops_stricmp (const char *p_str1, const char *p_str2)
 
     for (i = 0; i < cmplen; i++)
     {
-        if (utls_toupper(p_str1[i]) != utls_toupper(p_str2[i]))
+        if (utl_toupper(p_str1[i]) != utl_toupper(p_str2[i]))
             return (i+1);
     }
 

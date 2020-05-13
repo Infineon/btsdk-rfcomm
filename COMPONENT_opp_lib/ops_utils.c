@@ -33,46 +33,6 @@
 
 #include "wiced_bt_types.h"
 
-typedef wiced_bt_device_address_t BD_ADDR;
-extern void GKI_freebuf (void *memPtr);
-
-void bdcpy(BD_ADDR a, const BD_ADDR b)
-{
-    int i;
-
-    for (i = BD_ADDR_LEN; i != 0; i--)
-    {
-        *a++ = *b++;
-    }
-}
-
-void utl_freebuf(void **p)
-{
-    if (*p != NULL)
-    {
-        GKI_freebuf(*p);
-        *p = NULL;
-    }
-}
-
-char *utl_strrchr(char *s, int c)
-{
-    char* ret=0;
-    do {
-        if( *s == (char)c )
-            ret=s;
-    } while(*s++);
-    return ret;
-}
-
-char utls_toupper(char c)
-{
-    if( c>='a' && c<='z')
-        return (c = c +'A' - 'a');
-    else
-        return c;
-}
-
 BOOLEAN utl_check_utf8 (char *string, uint16_t max_len)
 {
     unsigned int i;

@@ -56,6 +56,7 @@
 #define L2CAP_MIN_OFFSET                        13      /* from l2c_api.h */
 #define RFCOMM_MIN_OFFSET                       5       /* from rfc_defs.h */
 #define PORT_SUCCESS                            0       /* from port_api.h */
+#define RFCOMM_INVALID_HANDLE                   0xFFFF
 
 /* SPP control block */
 typedef struct
@@ -85,6 +86,7 @@ extern BD_ADDR              bd_addr_connected;
 
 extern int PORT_Write (uint16_t handle, BT_HDR *p_buf);
 extern int PORT_Read (uint16_t handle, BT_HDR **pp_buf);
+extern int PORT_Purge (UINT16 handle, UINT8 purge_flags);
 extern void *GKI_getpoolbuf (uint8_t pool_id);
 extern void *GKI_getbuf (uint16_t);
 extern void GKI_freebuf (void *memPtr);

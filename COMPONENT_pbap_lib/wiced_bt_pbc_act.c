@@ -56,6 +56,7 @@
 #include "wiced_bt_pbc_int.h"
 
 #include "wiced_bt_obex.h"
+#include "wiced_bt_utils.h"
 
 
 /*****************************************************************************
@@ -98,7 +99,7 @@ void wiced_bt_pbc_init_open(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_data
     p_cb->obx_oper = PBC_OP_NONE;
     p_cb->sec_mask = p_data->api_open.sec_mask;
     p_cb->services = WICED_BT_PBAP_SERVICE_MASK;
-    bdcpy(p_cb->bd_addr, p_data->api_open.bd_addr);
+    utl_bdcpy(p_cb->bd_addr, p_data->api_open.bd_addr);
     p_cb->sdp_pending = TRUE;
 }
 
@@ -208,7 +209,7 @@ void wiced_bt_pbc_init_getfile(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
             /* add UID behind "X-BT-UID:" for get entry using UID */
             if (strlen(p_get->p_rem_name) == WICED_BT_PBC_UID_LEN)
             {
-                BCM_STRCAT_S(temp_buf, sizeof(temp_buf), p_get->p_rem_name);
+                utl_strcat(temp_buf, p_get->p_rem_name);
                 is_ok = wiced_bt_obex_add_header_utf8((UINT8 *)p_obx->p_pkt, OBEX_HI_NAME, (UINT8 *)temp_buf);
             }
             else
@@ -313,7 +314,7 @@ void wiced_bt_pbc_init_getfile(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
         /* add .vcf for UID */
         if (strlen(p_get->p_rem_name) == WICED_BT_PBC_UID_LEN)
         {
-            strcat(p_get->p_name, WICED_BT_PBC_UID_VCF_SUFFIX);
+            utl_strcat(p_get->p_name, WICED_BT_PBC_UID_VCF_SUFFIX);
         }
 
         rem_name_len = (UINT16)(strlen(p_get->p_rem_name) + 1);

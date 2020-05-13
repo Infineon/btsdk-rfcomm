@@ -52,6 +52,7 @@
 #include "wiced_bt_rfcomm.h"
 #include "wiced_bt_trace.h"
 #include "wiced_timer.h"
+#include "wiced_bt_utils.h"
 
 
 /* The maximum length of authentication challenge realm.*/
@@ -522,11 +523,7 @@ extern void  wiced_bt_pbc_proc_get_rsp(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_dat
 extern void  wiced_bt_pbc_proc_list_data(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_obx_evt_t *p_evt);
 extern void  wiced_bt_pbc_get_listing(wiced_bt_pbc_cb_t *p_cb, char *p_name, wiced_bt_pbc_list_param_t *p_param);
 extern void  wiced_bt_pbc_listing_err(BT_HDR **p_pkt, wiced_bt_pbc_status_t status);
-extern void bdcpy(BD_ADDR a, const BD_ADDR b);
 extern void *GKI_getbuf (uint16_t);
-extern void GKI_freebuf (void *memPtr);
-extern char *utl_strcpy( char *p_dst, char *p_src );
-extern void utl_freebuf(void **p);
 
 extern wiced_bt_pbc_status_t wiced_bt_pbc_convert_obx_to_pbc_status(wiced_bt_obex_status_t obx_status);
 

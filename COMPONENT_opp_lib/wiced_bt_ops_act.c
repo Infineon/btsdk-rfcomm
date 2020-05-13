@@ -52,6 +52,7 @@
 
 #include "wiced_bt_obex.h"
 #include "wiced_bt_ops_co.h"
+#include "wiced_bt_utils.h"
 
 
 /*****************************************************************************
@@ -89,7 +90,6 @@ const wiced_bt_ops_fs_cfg_t wiced_bt_ops_fs_cfg =
 
 wiced_bt_ops_fs_cfg_t *p_wiced_bt_ops_fs_cfg = (wiced_bt_ops_fs_cfg_t *)&wiced_bt_ops_fs_cfg;
 
-char *utl_strrchr(char *s, int c);
 /*****************************************************************************
 **  Action Functions
 *****************************************************************************/

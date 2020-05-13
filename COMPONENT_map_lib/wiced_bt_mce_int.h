@@ -49,6 +49,7 @@
 #include "wiced_timer.h"
 #include "wiced_bt_ma_def.h"
 #include "wiced_bt_mce_api.h"
+#include "wiced_bt_utils.h"
 
 /*****************************************************************************
 **  Constants and data types
@@ -596,7 +597,6 @@ extern wiced_mce_ma_cb_t *wiced_mce_get_ma_cb_using_bd_addr(wiced_bt_device_addr
 extern BOOLEAN wiced_mce_find_available_mn_cb_index(wiced_bt_device_address_t p_bd_addr, UINT8 *p_scb_idx);
 extern BOOLEAN wiced_mce_find_bd_addr_match_mn_cb_index(wiced_bt_device_address_t p_bd_addr, UINT8 *p_scb_idx);
 extern BOOLEAN wiced_mce_find_obx_handle_match_mn_cb_index(wiced_bt_obex_handle_t obx_handle, UINT8 *p_scb_idx);
-extern void utl_freebuf(void ** pp_buf);
 extern void GKI_freebuf(void *memPtr);
 
 /* action function for MNS */

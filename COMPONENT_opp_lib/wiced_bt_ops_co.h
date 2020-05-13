@@ -40,6 +40,8 @@
 #ifndef WICED_BT_OPS_CO_H
 #define WICED_BT_OPS_CO_H
 
+#include "wiced_bt_utils.h"
+
 /*****************************************************************************
 **  Constants and Data Types
 *****************************************************************************/
@@ -183,12 +185,7 @@ extern wiced_bt_ops_co_status_t wiced_bt_ops_co_unlink(const char *p_path, UINT8
 
 /* Other External Definitions */
 extern void *GKI_getbuf (uint16_t);
-extern void GKI_freebuf (void *memPtr);
 extern uint16_t L2CA_AllocatePSM(void);
-extern void utl_freebuf(void **p);
 extern BOOLEAN utl_check_utf8 (char *string, uint16_t max_len);
-extern void utl_freebuf(void **p);
-extern void bdcpy(BD_ADDR a, const BD_ADDR b);
-extern char utls_toupper(char c);
 
 #endif /* WICED_BT_OPS_CO_H */
