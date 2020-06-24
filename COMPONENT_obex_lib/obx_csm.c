@@ -1,5 +1,5 @@
 /*
- * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2016-2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -299,14 +299,14 @@ void obx_csm_event(tOBEX_CL_CB *p_cb, tOBEX_CL_EVENT event, BT_HDR *p_msg)
 
     if( curr_state == OBEX_CS_NULL || curr_state >= OBEX_CS_MAX)
     {
-        OBEX_TRACE_WARNING1( "Invalid state: %d", curr_state) ;
+        OBEX_TRACE_WARNING1( "Invalid state: %d\n", curr_state) ;
         if(p_msg)
             GKI_freebuf(p_msg);
         return;
     }
-    OBEX_TRACE_DEBUG4( "obx_csm_event: Client Handle 0x%x, State: %s, event: %s srm:0x%x",
+    OBEX_TRACE_DEBUG4( "obx_csm_event: Client Handle 0x%x, State: %s, event: %s srm:0x%x\n",
         p_cb->ll_cb.comm.handle, obx_cl_get_state_name( p_cb->state ), obx_cl_get_event_name(event), p_cb->srm ) ;
-    OBEX_TRACE_DEBUG1("obx_csm_event csm offset:%d", p_cb->param.sess.obj_offset);
+    OBEX_TRACE_DEBUG1("obx_csm_event csm offset:%d\n", p_cb->param.sess.obj_offset);
 
     /* look up the state table for the current state */
     /* lookup entry /w event & curr_state */
@@ -325,7 +325,7 @@ void obx_csm_event(tOBEX_CL_CB *p_cb, tOBEX_CL_EVENT event, BT_HDR *p_msg)
 
     if( entry == OBEX_SM_IGNORE || state_table == NULL)
     {
-        OBEX_TRACE_WARNING4( "Ignore event %s(%d) in state %s(%d)",
+        OBEX_TRACE_WARNING4( "Ignore event %s(%d) in state %s(%d)\n",
             obx_cl_get_event_name(event), event, obx_cl_get_state_name(curr_state), curr_state );
         if(p_msg)
             GKI_freebuf(p_msg);
@@ -340,10 +340,10 @@ void obx_csm_event(tOBEX_CL_CB *p_cb, tOBEX_CL_EVENT event, BT_HDR *p_msg)
         if (prev_state != p_cb->state)
         {
             p_cb->prev_state = prev_state;
-            OBEX_TRACE_DEBUG1( "saved state1:%s", obx_cl_get_state_name(p_cb->prev_state));
+            OBEX_TRACE_DEBUG1( "saved state1:%s\n", obx_cl_get_state_name(p_cb->prev_state));
         }
     }
-    OBEX_TRACE_DEBUG1( "possible new state = %s", obx_cl_get_state_name( p_cb->state ) ) ;
+    OBEX_TRACE_DEBUG1( "possible new state = %s\n", obx_cl_get_state_name( p_cb->state ) ) ;
 
     /* If action is not ignore, clear param, exec action and get next state.
      * The action function may set the Param for cback.
@@ -361,11 +361,11 @@ void obx_csm_event(tOBEX_CL_CB *p_cb, tOBEX_CL_EVENT event, BT_HDR *p_msg)
     {
         prev_state = p_cb->state;
         p_cb->state = act_state;
-        OBEX_TRACE_DEBUG1( "new state = %s (action)", obx_cl_get_state_name( p_cb->state )) ;
+        OBEX_TRACE_DEBUG1( "new state = %s (action)\n", obx_cl_get_state_name( p_cb->state )) ;
         if (prev_state != p_cb->state)
         {
             p_cb->prev_state = prev_state;
-            OBEX_TRACE_DEBUG1( "saved state2:%s", obx_cl_get_state_name(p_cb->prev_state));
+            OBEX_TRACE_DEBUG1( "saved state2:%s\n", obx_cl_get_state_name(p_cb->prev_state));
         }
     }
 
@@ -378,7 +378,7 @@ void obx_csm_event(tOBEX_CL_CB *p_cb, tOBEX_CL_EVENT event, BT_HDR *p_msg)
     }
     else if(action == OBEX_SM_NO_ACTION && p_msg)
             GKI_freebuf(p_msg);
-    OBEX_TRACE_DEBUG1("after csm offset:%d", p_cb->param.sess.obj_offset);
+    OBEX_TRACE_DEBUG1("after csm offset:%d\n", p_cb->param.sess.obj_offset);
 
-    OBEX_TRACE_DEBUG2( "result state = %s/%d", obx_cl_get_state_name( p_cb->state ), p_cb->state ) ;
+    OBEX_TRACE_DEBUG2( "result state = %s/%d\n", obx_cl_get_state_name( p_cb->state ), p_cb->state ) ;
 }

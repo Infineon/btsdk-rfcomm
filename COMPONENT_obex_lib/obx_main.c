@@ -1,5 +1,5 @@
 /*
- * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2016-2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -230,7 +230,7 @@ void obx_start_timer(tOBEX_COMM_CB *p_pcb)
         }
         wiced_start_timer(&p_pcb->tle.wiced_timer, timeout);
     }
-    OBEX_TRACE_DEBUG2("obx_start_timer val:%d, p_tle:0x%x", timeout, &p_pcb->tle);
+    OBEX_TRACE_DEBUG2("obx_start_timer val:%d, p_tle:0x%x\n", timeout, &p_pcb->tle);
 }
 
 /*******************************************************************************
@@ -240,7 +240,7 @@ void obx_start_timer(tOBEX_COMM_CB *p_pcb)
 void obx_stop_timer(TIMER_LIST_ENT *p_tle)
 {
     wiced_stop_timer(&p_tle->wiced_timer);
-    OBEX_TRACE_DEBUG1("obx_stop_timer p_tle:0x%x", p_tle);
+    OBEX_TRACE_DEBUG1("obx_stop_timer p_tle:0x%x\n", p_tle);
 }
 
 /*******************************************************************************
@@ -256,7 +256,7 @@ void obx_cl_timeout(uint32_t cb_params)
     tOBEX_HANDLE     handle = p_cb->ll_cb.comm.handle;
     tOBEX_CL_CBACK   *p_cback = p_cb->p_cback;
 
-    OBEX_TRACE_DEBUG0("obx_cl_timeout");
+    OBEX_TRACE_DEBUG0("obx_cl_timeout\n");
     memset(&evtp, 0, sizeof(tOBEX_EVT_PARAM));
     if (obx_cb.timeout_val)
         wiced_start_timer(&p_tle->wiced_timer, obx_cb.timeout_val);
@@ -289,7 +289,7 @@ tOBEX_CL_CB *obx_cl_alloc_cb(void)
         {
             p_cb->ll_cb.comm.handle   = OBEX_CL_HANDLE_MASK | (yy + 1);
 //            obx_cb.next_ind     = yy+1; /* it will be adjusted, so we do not need to check the range now */
-            OBEX_TRACE_DEBUG3("obx_cl_alloc_cb obx handle:0x%x, yy:%d, next: %d",
+            OBEX_TRACE_DEBUG3("obx_cl_alloc_cb obx handle:0x%x, yy:%d, next: %d\n",
                 p_cb->ll_cb.comm.handle, yy, obx_cb.next_ind);
             p_cb->ll_cb.comm.tx_mtu = 0;
             p_cb->conn_id     = OBEX_INVALID_CONN_ID;
@@ -344,7 +344,7 @@ tOBEX_CL_CB *obx_cl_get_suspended_cb(tOBEX_HANDLE *p_handle, UINT8 *p_session_in
     tOBEX_CL_CB *p_ccb = NULL;
     UINT8       ind  = (handle & OBEX_CL_CB_IND_MASK);
 
-    OBEX_TRACE_DEBUG1("obx_cl_get_suspended_cb handle: 0x%x", handle);
+    OBEX_TRACE_DEBUG1("obx_cl_get_suspended_cb handle: 0x%x\n", handle);
     if (handle & OBEX_CL_HANDLE_MASK)
     {
         if (ind <= obx_cb.num_client && ind > 0)
@@ -355,7 +355,7 @@ tOBEX_CL_CB *obx_cl_get_suspended_cb(tOBEX_HANDLE *p_handle, UINT8 *p_session_in
                 if (p_ccb->sess_st == OBEX_SESS_SUSPENDED &&
                     ((p_session_info == p_ccb->sess_info) || (memcmp(p_session_info, p_ccb->sess_info, OBEX_SESSION_INFO_SIZE) == 0)))
                 {
-                    OBEX_TRACE_DEBUG0("found a suspended session");
+                    OBEX_TRACE_DEBUG0("found a suspended session\n");
                     p_cb = p_ccb;
                 }
             }
@@ -369,7 +369,7 @@ tOBEX_CL_CB *obx_cl_get_suspended_cb(tOBEX_HANDLE *p_handle, UINT8 *p_session_in
             *p_handle       = p_cb->ll_cb.comm.handle;
             p_cb->sess_st   = OBEX_SESS_SUSPENDED;
             memcpy(p_cb->sess_info, p_session_info, OBEX_SESSION_INFO_SIZE);
-            OBEX_TRACE_DEBUG1("allocated a suspended session handle: 0x%x", *p_handle);
+            OBEX_TRACE_DEBUG1("allocated a suspended session handle: 0x%x\n", *p_handle);
         }
     }
 
@@ -389,7 +389,7 @@ void obx_cl_free_cb(tOBEX_CL_CB * p_cb)
 {
     if (p_cb)
     {
-        OBEX_TRACE_DEBUG2("obx_cl_free_cb id: %d, sess_st:%d", p_cb->ll_cb.comm.id, p_cb->sess_st);
+        OBEX_TRACE_DEBUG2("obx_cl_free_cb id: %d, sess_st:%d\n", p_cb->ll_cb.comm.id, p_cb->sess_st);
 
         if (p_cb->ll_cb.comm.id>0)
         {
@@ -437,7 +437,7 @@ tOBEX_SPND_CB *obx_find_suspended_session (tOBEX_SR_SESS_CB *p_scb, tOBEX_TRIPLE
     tOBEX_SR_CB      *p_cb = obx_sr_get_cb(p_scb->handle);
     tOBEX_SPND_CB    *p_spndcb, *p_ret = NULL;
 
-    OBEX_TRACE_DEBUG0("obx_find_suspended_session ");
+    OBEX_TRACE_DEBUG0("obx_find_suspended_session\n");
     if (p_triplet == NULL)
     {
         if (p_cb->p_suspend)
@@ -446,7 +446,7 @@ tOBEX_SPND_CB *obx_find_suspended_session (tOBEX_SR_SESS_CB *p_scb, tOBEX_TRIPLE
             {
                 if ((p_spndcb->state == OBEX_SS_NULL) || (memcmp(p_spndcb->peer_addr, p_scb->peer_addr, BD_ADDR_LEN)==0))
                 {
-                    OBEX_TRACE_DEBUG3("[%d] state: %d, BDA: %08x", xx, p_spndcb->state,
+                    OBEX_TRACE_DEBUG3("[%d] state: %d, BDA: %08x\n", xx, p_spndcb->state,
                    (p_spndcb->peer_addr[2]<<24)+(p_spndcb->peer_addr[3]<<16)+(p_spndcb->peer_addr[4]<<8)+p_spndcb->peer_addr[5]);
                     /* this entry is not used yet or overwriting the entry with the same address */
                     found = TRUE;
@@ -457,7 +457,7 @@ tOBEX_SPND_CB *obx_find_suspended_session (tOBEX_SR_SESS_CB *p_scb, tOBEX_TRIPLE
                     infinite = TRUE;
                 }
             }
-            OBEX_TRACE_DEBUG2("found: %d infinite:%d", found, infinite);
+            OBEX_TRACE_DEBUG2("found: %d infinite:%d\n", found, infinite);
             if (found == FALSE)
                 found = infinite;
         }
@@ -475,7 +475,7 @@ tOBEX_SPND_CB *obx_find_suspended_session (tOBEX_SR_SESS_CB *p_scb, tOBEX_TRIPLE
             p = p_triplet[ind].p_array;
             for (xx=0, p_spndcb=p_cb->p_suspend; xx<p_cb->max_suspend; xx++, p_spndcb++)
             {
-                OBEX_TRACE_DEBUG5("[%d] state: %d/%d, ssn:%d offset:x%x", xx, p_spndcb->state,
+                OBEX_TRACE_DEBUG5("[%d] state: %d/%d, ssn:%d offset:x%x\n", xx, p_spndcb->state,
                     p_spndcb->sess_info[OBEX_SESSION_INFO_ST_IDX], p_spndcb->ssn, p_spndcb->offset);
                 if ((p_spndcb->state != OBEX_SS_NULL) &&
                     (memcmp (p, p_spndcb->sess_info, OBEX_SESSION_ID_SIZE) == 0))
@@ -501,7 +501,7 @@ void obx_sr_sess_timeout(uint32_t cb_params)
     TIMER_LIST_ENT  *p_tle = (TIMER_LIST_ENT *)cb_params;
     tOBEX_SPND_CB    *p_spndcb = (tOBEX_SPND_CB *) p_tle->param;
 
-    OBEX_TRACE_DEBUG0("obx_sr_sess_timeout");
+    OBEX_TRACE_DEBUG0("obx_sr_sess_timeout\n");
     p_spndcb->state = OBEX_SS_NULL;
 }
 
@@ -544,7 +544,7 @@ tOBEX_HANDLE obx_sr_alloc_cb(tOBEX_StartParams *p_params)
     tOBEX_SR_SESS_CB *p_scb = &obx_cb.sr_sess[0];
     tOBEX_HANDLE obx_handle = OBEX_HANDLE_NULL;
 
-    OBEX_TRACE_DEBUG1("obx_sr_alloc_cb num sess: %d", p_params->max_sessions);
+    OBEX_TRACE_DEBUG1("obx_sr_alloc_cb num sess: %d\n", p_params->max_sessions);
     /* allocate a server control block */
     for (xx=0; xx<obx_cb.num_server; xx++, p_cb++)
     {
@@ -574,7 +574,7 @@ tOBEX_HANDLE obx_sr_alloc_cb(tOBEX_StartParams *p_params)
                 p_scb->ll_cb.comm.tx_mtu = 0;
                 p_scb->ll_cb.comm.tle.param = (TIMER_PARAM_TYPE)p_scb;
                 p_scb->ll_cb.comm.rx_mtu   = p_params->mtu;
-                OBEX_TRACE_DEBUG2("[%d]: 0x%x", zz, p_scb->ll_cb.comm.handle);
+                OBEX_TRACE_DEBUG2("[%d]: 0x%x\n", zz, p_scb->ll_cb.comm.handle);
 
                 zz++;
             }
@@ -586,7 +586,7 @@ tOBEX_HANDLE obx_sr_alloc_cb(tOBEX_StartParams *p_params)
         {
             if (obx_l2c_sr_register(p_cb) != OBEX_SUCCESS)
             {
-                OBEX_TRACE_ERROR0("Cannot register to L2CAP");
+                OBEX_TRACE_ERROR0("Cannot register to L2CAP\n");
                 zz = 0; /* let it fail */
             }
         }
@@ -594,7 +594,7 @@ tOBEX_HANDLE obx_sr_alloc_cb(tOBEX_StartParams *p_params)
 
         if (zz != p_params->max_sessions)
         {
-            OBEX_TRACE_ERROR0("not enough resources: release the allocated ones");
+            OBEX_TRACE_ERROR0("not enough resources: release the allocated ones\n");
             p_cb->scn   = 0;
             p_cb->psm   = 0;
             obx_handle  = OBEX_HANDLE_NULL;
@@ -618,7 +618,7 @@ tOBEX_HANDLE obx_sr_alloc_cb(tOBEX_StartParams *p_params)
                 p_cb->max_suspend = OBEX_MAX_SUSPEND_SESSIONS;
             if ((p_cb->max_suspend * sizeof (tOBEX_SPND_CB)) > GKI_MAX_BUF_SIZE)
             {
-                OBEX_TRACE_ERROR1("OBEX_MAX_SUSPEND_SESSIONS:%d is too big", OBEX_MAX_SUSPEND_SESSIONS);
+                OBEX_TRACE_ERROR1("OBEX_MAX_SUSPEND_SESSIONS:%d is too big\n", OBEX_MAX_SUSPEND_SESSIONS);
             }
         }
     }
@@ -692,7 +692,7 @@ void obx_sr_free_cb(tOBEX_HANDLE handle)
     tOBEX_SR_SESS_CB *p_scb;
     int yy;
 
-    OBEX_TRACE_DEBUG1("obx_sr_free_cb handle:0x%x", handle);
+    OBEX_TRACE_DEBUG1("obx_sr_free_cb handle:0x%x\n", handle);
     /* check range */
     if (p_cb)
     {
@@ -730,7 +730,7 @@ void obx_sr_free_cb(tOBEX_HANDLE handle)
 *******************************************************************************/
 void obx_sr_free_scb(tOBEX_SR_SESS_CB *p_scb)
 {
-    OBEX_TRACE_DEBUG2("obx_sr_free_scb shandle:0x%x, sess_st:%d", p_scb->ll_cb.comm.handle, p_scb->sess_st);
+    OBEX_TRACE_DEBUG2("obx_sr_free_scb shandle:0x%x, sess_st:%d\n", p_scb->ll_cb.comm.handle, p_scb->sess_st);
 
     /* make sure the GKI buffers are freed */
     if (p_scb->p_saved_msg)
@@ -780,7 +780,7 @@ UINT32 obx_sr_get_next_conn_id(void)
             /* If the handle is in use and same as proposed conn_id, increment and restart */
             if (p_ccb->ll_cb.comm.handle != OBEX_HANDLE_NULL && p_ccb->conn_id == obx_cb.next_cid)
             {
-                OBEX_TRACE_WARNING1(" **** OBX CONN_ID Collision (0x%08x)  trying another...", obx_cb.next_cid);
+                OBEX_TRACE_WARNING1(" **** OBX CONN_ID Collision (0x%08x)  trying another...\n", obx_cb.next_cid);
                 done = FALSE;
                 break;
             }
@@ -810,7 +810,7 @@ tOBEX_PORT_CB * obx_port_handle_2cb(UINT16 port_handle)
     /* this function is called by obx_rfc_cback() only.
      * assume that port_handle is within range */
     obx_handle  = obx_cb.hdl_map[port_handle-1];
-    OBEX_TRACE_DEBUG2("obx_port_handle_2cb port_handle:%d obx_handle:0x%x", port_handle, obx_handle);
+    OBEX_TRACE_DEBUG2("obx_port_handle_2cb port_handle:%d obx_handle:0x%x\n", port_handle, obx_handle);
 
     if (obx_handle > 0)
     {
@@ -823,7 +823,7 @@ tOBEX_PORT_CB * obx_port_handle_2cb(UINT16 port_handle)
         {
             p_cb = &obx_cb.server[OBEX_DEC_HANDLE(obx_handle) - 1];
             p_pcb = &obx_cb.sr_sess[p_cb->sess[OBEX_DEC_SESS_IND(obx_handle)]-1].ll_cb.port;
-            OBEX_TRACE_DEBUG1("p_pcb port_handle:%d", p_pcb->port_handle);
+            OBEX_TRACE_DEBUG1("p_pcb port_handle:%d\n", p_pcb->port_handle);
         }
     }
 
@@ -902,6 +902,6 @@ UINT16 OBEX_HandleToMtu(tOBEX_HANDLE handle)
 
     if (mtu < OBEX_MIN_MTU)
         mtu = OBEX_MIN_MTU;
-    OBEX_TRACE_DEBUG3("OBEX_HandleToMtu handle: 0x%x, rx:%x, mtu:%d", handle, rx, mtu);
+    OBEX_TRACE_DEBUG3("OBEX_HandleToMtu handle: 0x%x, rx:%x, mtu:%d\n", handle, rx, mtu);
     return mtu;
 }

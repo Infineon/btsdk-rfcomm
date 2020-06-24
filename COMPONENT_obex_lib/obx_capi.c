@@ -1,5 +1,5 @@
 /*
- * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2016-2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -73,7 +73,7 @@ wiced_bt_obex_status_t wiced_bt_obex_connect(wiced_bt_device_address_t bd_addr, 
 
     WC_ASSERT(p_handle);
 
-    OBEX_TRACE_DEBUG0("wiced_bt_obex_connect");
+    OBEX_TRACE_DEBUG0("wiced_bt_obex_connect\n");
 
     p_cb = obx_cl_get_cb(*p_handle);
     if (p_cb == NULL)
@@ -115,7 +115,7 @@ wiced_bt_obex_status_t wiced_bt_obex_connect(wiced_bt_device_address_t bd_addr, 
         }
         else
         {
-            OBEX_TRACE_ERROR1("Error opening port for scn: %d", scn);
+            OBEX_TRACE_ERROR1("Error opening port for scn: %d\n", scn);
             obx_cl_free_cb(p_cb);
         }
     }
@@ -219,8 +219,8 @@ wiced_bt_obex_status_t wiced_bt_obex_send_request(wiced_bt_obex_handle_t handle,
 
             if (p_pkt == NULL)
             {
-                OBEX_TRACE_ERROR0("OBEX_ActionReq must include Name & DestName Header for Copy/Move action" );
-                OBEX_TRACE_ERROR0("OBEX_ActionReq must include Name & Permission Header for Set Object Permission action" );
+                OBEX_TRACE_ERROR0("OBEX_ActionReq must include Name & DestName Header for Copy/Move action\n");
+                OBEX_TRACE_ERROR0("OBEX_ActionReq must include Name & Permission Header for Set Object Permission action\n");
                 return OBEX_BAD_PARAMS;
             }
 
@@ -278,7 +278,7 @@ wiced_bt_obex_status_t wiced_bt_obex_alloc_session(uint8_t *p_session_info, uint
     WC_ASSERT(p_handle);
     WC_ASSERT(p_cback);
 
-    OBEX_TRACE_API2("OBEX_AllocSession scn: %d, psm:0x%x", scn, *p_psm);
+    OBEX_TRACE_API2("OBEX_AllocSession scn: %d, psm:0x%x\n", scn, *p_psm);
 
     if (p_session_info)
     {
@@ -374,14 +374,14 @@ wiced_bt_obex_status_t wiced_bt_obex_create_session(wiced_bt_device_address_t bd
     tOBEX_TRIPLET triplet[4];
     UINT8       num_trip = 0;
 
-    OBEX_TRACE_API1("OBEX_CreateSession handle: 0x%x", handle);
+    OBEX_TRACE_API1("OBEX_CreateSession handle: 0x%x\n", handle);
     p_cb = obx_cl_get_cb(handle);
 
     if (p_cb)
     {
         if (p_cb->state != OBEX_CS_NOT_CONNECTED || p_cb->sess_st != OBEX_SESS_NONE)
         {
-            OBEX_TRACE_ERROR2("bad state: %d, or sess_st:%d", p_cb->state, p_cb->sess_st);
+            OBEX_TRACE_ERROR2("bad state: %d, or sess_st:%d\n", p_cb->state, p_cb->sess_st);
             return status;
         }
 
@@ -389,7 +389,7 @@ wiced_bt_obex_status_t wiced_bt_obex_create_session(wiced_bt_device_address_t bd
         {
             p_cb->ll_cb.comm.rx_mtu = mtu;
 
-            OBEX_TRACE_DEBUG2("scn: %d, psm:0x%x", p_cb->rsp_code, p_cb->psm);
+            OBEX_TRACE_DEBUG2("scn: %d, psm:0x%x\n", p_cb->rsp_code, p_cb->psm);
 
 #ifdef OBEX_LIB_L2CAP_INCLUDED
             if (p_cb->psm)
@@ -549,12 +549,12 @@ wiced_bt_obex_status_t wiced_bt_obex_resume_session(wiced_bt_device_address_t bd
     UINT8       num_trip = 0;
     UINT8       *pn;
 
-    OBEX_TRACE_API3("OBEX_ResumeSession handle: 0x%x ssn:%d offset:%d", handle, ssn, offset);
+    OBEX_TRACE_API3("OBEX_ResumeSession handle: 0x%x ssn:%d offset:%d\n", handle, ssn, offset);
     p_cb = obx_cl_get_cb(handle);
 
     if (p_cb)
     {
-        OBEX_TRACE_DEBUG3("OBEX_ResumeSession, sess_st:%d srm:0x%x, saved state:0x%x", p_cb->sess_st,
+        OBEX_TRACE_DEBUG3("OBEX_ResumeSession, sess_st:%d srm:0x%x, saved state:0x%x\n", p_cb->sess_st,
             p_cb->sess_info[OBEX_SESSION_INFO_SRM_IDX], p_cb->sess_info[OBEX_SESSION_INFO_SRM_IDX]);
         if (p_cb->sess_st == OBEX_SESS_SUSPENDED)
         {
@@ -627,7 +627,7 @@ wiced_bt_obex_status_t wiced_bt_obex_resume_session(wiced_bt_device_address_t bd
                 if (p_cb->ll_cb.comm.id == 0 || p_cb->ll_cb.comm.p_send_fn == 0)
                 {
                     /* the transport is closed. open it again */
-                    OBEX_TRACE_DEBUG2("scn: %d, psm:0x%x", p_cb->rsp_code, p_cb->psm);
+                    OBEX_TRACE_DEBUG2("scn: %d, psm:0x%x\n", p_cb->rsp_code, p_cb->psm);
                     p_cb->ll_cb.comm.rx_mtu = OBEX_MAX_MTU;
 
 #ifdef OBEX_LIB_L2CAP_INCLUDED
@@ -659,7 +659,7 @@ wiced_bt_obex_status_t wiced_bt_obex_resume_session(wiced_bt_device_address_t bd
         }
         else
         {
-            OBEX_TRACE_ERROR1("Handle is not in a right state: %d for RESUME", p_cb->sess_st);
+            OBEX_TRACE_ERROR1("Handle is not in a right state: %d for RESUME\n", p_cb->sess_st);
             status = OBEX_BAD_HANDLE;
         }
     }
@@ -779,10 +779,10 @@ tOBEX_STATUS obx_prepend_req_msg(tOBEX_HANDLE handle, tOBEX_CL_EVENT event, UINT
                 if(event == OBEX_PUT_REQ_CEVT)
                 {
                     num_hdrs = OBEX_ReadNumHdrs(p_pkt, &num_body);
-                    OBEX_TRACE_DEBUG2("num_hdrs:%d num_body:%d", num_hdrs, num_body);
+                    OBEX_TRACE_DEBUG2("num_hdrs:%d num_body:%d\n", num_hdrs, num_body);
                     if (num_hdrs == num_body)
                     {
-                        OBEX_TRACE_DEBUG0("it is left-over, drop it");
+                        OBEX_TRACE_DEBUG0("it is left-over, drop it\n");
                         if (p_pkt)
                             GKI_freebuf (p_pkt);
                         return OBEX_BAD_PARAMS;
@@ -794,7 +794,7 @@ tOBEX_STATUS obx_prepend_req_msg(tOBEX_HANDLE handle, tOBEX_CL_EVENT event, UINT
                     srm = OBEX_SRM_REQING;
                 }
 
-                OBEX_TRACE_DEBUG2("cb srm: 0x%x/0x%x", p_cb->srm, srm );
+                OBEX_TRACE_DEBUG2("cb srm: 0x%x/0x%x\n", p_cb->srm, srm );
                 if (srm)
                 {
                     p_cb->srm |= srm;
@@ -842,7 +842,7 @@ tOBEX_STATUS obx_session_req (tOBEX_HANDLE handle, tOBEX_SESS_OP opcode, UINT32 
 
     if (p_cb)
     {
-        OBEX_TRACE_API2("OBEX_SessionReq st:%d opcode:%d", p_cb->sess_st, opcode);
+        OBEX_TRACE_API2("OBEX_SessionReq st:%d opcode:%d\n", p_cb->sess_st, opcode);
         old_sess_st = p_cb->sess_st;
         if ((p_req = (BT_HDR *)wiced_bt_obex_header_init(OBEX_HANDLE_NULL, OBEX_MIN_MTU)) != NULL)
         {
@@ -875,7 +875,7 @@ tOBEX_STATUS obx_session_req (tOBEX_HANDLE handle, tOBEX_SESS_OP opcode, UINT32 
                     p_cb->sess_st  = OBEX_SESS_CLOSE;
                 else
                 {
-                    OBEX_TRACE_ERROR1("Handle is not in a right state: %d for CLOSE", p_cb->sess_st);
+                    OBEX_TRACE_ERROR1("Handle is not in a right state: %d for CLOSE\n", p_cb->sess_st);
                     status = OBEX_BAD_HANDLE;
                 }
                 break;
@@ -890,7 +890,7 @@ tOBEX_STATUS obx_session_req (tOBEX_HANDLE handle, tOBEX_SESS_OP opcode, UINT32 
                 }
                 else
                 {
-                    OBEX_TRACE_ERROR1("Handle is not in a right state: %d for SUSPEND", p_cb->sess_st);
+                    OBEX_TRACE_ERROR1("Handle is not in a right state: %d for SUSPEND\n", p_cb->sess_st);
                     status = OBEX_BAD_HANDLE;
                 }
                 break;
@@ -904,16 +904,16 @@ tOBEX_STATUS obx_session_req (tOBEX_HANDLE handle, tOBEX_SESS_OP opcode, UINT32 
                 }
                 else
                 {
-                    OBEX_TRACE_ERROR1("Handle is not in a right state: %d for SET_TIME", p_cb->sess_st);
+                    OBEX_TRACE_ERROR1("Handle is not in a right state: %d for SET_TIME\n", p_cb->sess_st);
                     status = OBEX_BAD_HANDLE;
                 }
                 break;
             default:
-                OBEX_TRACE_ERROR1("bad session opcode :%d", opcode);
+                OBEX_TRACE_ERROR1("bad session opcode :%d\n", opcode);
                 status = OBEX_BAD_PARAMS;
             }
 
-            OBEX_TRACE_DEBUG4("OBEX_SessionReq, sess_st:%d->%d opcode:%d status:%d", old_sess_st, p_cb->sess_st, opcode, status);
+            OBEX_TRACE_DEBUG4("OBEX_SessionReq, sess_st:%d->%d opcode:%d status:%d\n", old_sess_st, p_cb->sess_st, opcode, status);
             if (status != OBEX_SUCCESS)
                 GKI_freebuf (p_req);
             else
@@ -925,7 +925,7 @@ tOBEX_STATUS obx_session_req (tOBEX_HANDLE handle, tOBEX_SESS_OP opcode, UINT32 
                     if (p_cb->state == OBEX_CS_PARTIAL_SENT)
                         p_cb->sess_info[OBEX_SESSION_INFO_ST_IDX] = p_cb->prev_state;
                     p_cb->sess_info[OBEX_SESSION_INFO_SRM_IDX] = p_cb->srm;
-                    OBEX_TRACE_DEBUG2("suspend saved st:%d, srm:0x%x", p_cb->sess_info[OBEX_SESSION_INFO_ST_IDX], p_cb->sess_info[OBEX_SESSION_INFO_SRM_IDX]);
+                    OBEX_TRACE_DEBUG2("suspend saved st:%d, srm:0x%x\n", p_cb->sess_info[OBEX_SESSION_INFO_ST_IDX], p_cb->sess_info[OBEX_SESSION_INFO_SRM_IDX]);
                 }
                 /* adjust the packet len */
                 p = (UINT8 *) (p_req + 1) + p_req->offset + 1;

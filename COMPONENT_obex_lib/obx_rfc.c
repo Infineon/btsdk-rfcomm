@@ -1,5 +1,5 @@
 /*
- * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2016-2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -76,7 +76,7 @@ static void obx_rfc_cback (wiced_bt_rfcomm_port_event_t code, UINT16 port_handle
 {
     tOBEX_PORT_CB    *p_pcb = obx_port_handle_2cb(port_handle);
 
-    OBEX_TRACE_DEBUG2("obx_rfc_cback (code: 0x%x, port_handle: %d)", code, port_handle);
+    OBEX_TRACE_DEBUG2("obx_rfc_cback (code: 0x%x, port_handle: %d)\n", code, port_handle);
 
     if (p_pcb)
     {
@@ -84,7 +84,7 @@ static void obx_rfc_cback (wiced_bt_rfcomm_port_event_t code, UINT16 port_handle
     }
     else
     {
-        OBEX_TRACE_WARNING0("Can not find control block");
+        OBEX_TRACE_WARNING0("Can not find control block\n");
     }
 }
 
@@ -98,7 +98,7 @@ void obx_rfc_mgmt_cback(wiced_bt_rfcomm_result_t port_status, UINT16 port_handle
     tOBEX_PORT_CB    *p_pcb = obx_port_handle_2cb(port_handle);
     UINT32           code;
 
-    OBEX_TRACE_DEBUG2("obx_rfc_mgmt_cback(port_status: %d, port_handle: %d)", port_status, port_handle);
+    OBEX_TRACE_DEBUG2("obx_rfc_mgmt_cback(port_status: %d, port_handle: %d)\n", port_status, port_handle);
 
     if (!p_pcb && port_status != WICED_BT_RFCOMM_SUCCESS)
     {
@@ -122,7 +122,7 @@ void obx_rfc_mgmt_cback(wiced_bt_rfcomm_result_t port_status, UINT16 port_handle
     }
     else
     {
-        OBEX_TRACE_WARNING0("mgmt cback: Can not find control block");
+        OBEX_TRACE_WARNING0("mgmt cback: Can not find control block\n");
     }
 }
 
@@ -150,13 +150,18 @@ static BT_HDR * obx_read_data (tOBEX_PORT_CB *p_pcb, tOBEX_VERIFY_OPCODE p_verif
     UINT16      pkt_len;
     BOOLEAN     failed = FALSE;
 
-    OBEX_TRACE_DEBUG1("obx_read_data port_handle:%d", p_pcb->port_handle );
+    OBEX_TRACE_DEBUG1("obx_read_data port_handle:%d\n", p_pcb->port_handle );
     for (;;)
     {
         if (p_pcb->p_rxmsg == NULL)
         {
             p_pcb->p_rxmsg = (BT_HDR *)wiced_bt_obex_header_init((tOBEX_HANDLE)(p_pcb->handle|OBEX_HANDLE_RX_MTU_MASK),
                                          OBEX_LRG_DATA_POOL_SIZE);
+            if (p_pcb->p_rxmsg == NULL)
+            {
+                failed = TRUE;
+                break;
+            }
             memset((p_pcb->p_rxmsg + 1), 0, sizeof(tOBEX_RX_HDR));
         }
         /* we use this header to keep the status of this packet (instead of in control block) */
@@ -188,10 +193,10 @@ static BT_HDR * obx_read_data (tOBEX_PORT_CB *p_pcb, tOBEX_VERIFY_OPCODE p_verif
             rc = PORT_ReadData( p_pcb->port_handle, (char*)p, ask_len, &got_len);
             if (rc != PORT_SUCCESS)
             {
-                OBEX_TRACE_WARNING2("Error %d returned from PORT_Read_Data, len:%d", rc, got_len);
+                OBEX_TRACE_WARNING2("Error %d returned from PORT_Read_Data, len:%d\n", rc, got_len);
             }
 
-            OBEX_TRACE_DEBUG2("ask_len: %d, got_len:%d", ask_len, got_len );
+            OBEX_TRACE_DEBUG2("ask_len: %d, got_len:%d\n", ask_len, got_len );
             if (got_len == 0)
             {
                 /* If we tried to read but did not get anything, */
@@ -208,7 +213,7 @@ static BT_HDR * obx_read_data (tOBEX_PORT_CB *p_pcb, tOBEX_VERIFY_OPCODE p_verif
             opcode  = *((UINT8 *)(p_pcb->p_rxmsg + 1) + p_pcb->p_rxmsg->offset);
             if ( (p_verify_opcode)(opcode, p_rxh) == OBEX_BAD_SM_EVT)
             {
-                OBEX_TRACE_WARNING1("bad opcode:0x%x - Disconnecting", opcode );
+                OBEX_TRACE_WARNING1("bad opcode:0x%x - Disconnecting\n", opcode );
                 /* received data with bad length. */
 
                 /*bad length disconnect */
@@ -229,7 +234,7 @@ static BT_HDR * obx_read_data (tOBEX_PORT_CB *p_pcb, tOBEX_VERIFY_OPCODE p_verif
                 (pkt_len == 4) )
             {
                 /* received data with bad length. */
-                OBEX_TRACE_WARNING2("Received bad packet len -Disconnecting: %d RX MTU: %x",
+                OBEX_TRACE_WARNING2("Received bad packet len -Disconnecting: %d RX MTU: %x\n",
                     pkt_len, p_pcb->rx_mtu);
                 /*bad length disconnect */
                 failed = TRUE;
@@ -246,7 +251,7 @@ static BT_HDR * obx_read_data (tOBEX_PORT_CB *p_pcb, tOBEX_VERIFY_OPCODE p_verif
         if (p_pcb->p_rxmsg->len == p_rxh->pkt_len)
         {
             /* received a whole packet */
-            OBEX_TRACE_DEBUG1("got a packet. opcode:0x%x", p_rxh->code );
+            OBEX_TRACE_DEBUG1("got a packet. opcode:0x%x\n", p_rxh->code );
             p_ret = p_pcb->p_rxmsg;
             p_pcb->p_rxmsg = NULL;
             break;
@@ -269,6 +274,15 @@ static BT_HDR * obx_read_data (tOBEX_PORT_CB *p_pcb, tOBEX_VERIFY_OPCODE p_verif
         p_ret = NULL;
     }
 
+    if (p_pcb->p_rxmsg)
+    {
+       if (p_pcb->p_rxmsg->len == 0)
+       {
+           GKI_freebuf(p_pcb->p_rxmsg);
+           p_pcb->p_rxmsg = NULL;
+       }
+    }
+
     return p_ret;
 }
 
@@ -289,7 +303,7 @@ void obx_cl_proc_evt(tOBEX_PORT_EVT *p_evt)
     if (p_cb == NULL)
     {
         /* probably already close the port and deregistered from OBX */
-        OBEX_TRACE_ERROR1("Could not find control block for handle: 0x%x", p_pcb->handle);
+        OBEX_TRACE_ERROR1("Could not find control block for handle: 0x%x\n", p_pcb->handle);
         return;
     }
 
@@ -316,7 +330,7 @@ void obx_cl_proc_evt(tOBEX_PORT_EVT *p_evt)
                 }
                 else
                 {
-                    OBEX_TRACE_ERROR0("bad SM event" );
+                    OBEX_TRACE_ERROR0("bad SM event\n");
                 }
             }
             else if (p_pkt->event != OBEX_BAD_SM_EVT)
@@ -335,7 +349,7 @@ void obx_cl_proc_evt(tOBEX_PORT_EVT *p_evt)
     {
         if (p_evt->code & PORT_EV_FCS)
         {
-            OBEX_TRACE_EVENT0("cl flow control event - FCS SET ----" );
+            OBEX_TRACE_EVENT0("cl flow control event - FCS SET ----\n");
             obx_csm_event(p_cb, OBEX_FCS_SET_CEVT, NULL);
         }
     } /* PORT_EV_FC */
@@ -388,17 +402,17 @@ void obx_add_port(tOBEX_HANDLE obx_handle)
     tOBEX_STATUS status = OBEX_NO_RESOURCES;
     BOOLEAN found;
 
-    OBEX_TRACE_DEBUG1("obx_add_port handle:0x%x", obx_handle );
+    OBEX_TRACE_DEBUG1("obx_add_port handle:0x%x\n", obx_handle );
     if (p_cb && p_cb->scn)
     {
-        OBEX_TRACE_DEBUG2("num_sess:%d scn:%d", p_cb->num_sess, p_cb->scn );
+        OBEX_TRACE_DEBUG2("num_sess:%d scn:%d\n", p_cb->num_sess, p_cb->scn );
         p_scb0 = &obx_cb.sr_sess[p_cb->sess[0]-1];
         found = FALSE;
         /* find an RFCOMM port that is not connected yet */
         for (xx=0; xx < p_cb->num_sess && p_cb->sess[xx]; xx++)
         {
             p_scb = &obx_cb.sr_sess[p_cb->sess[xx]-1];
-            OBEX_TRACE_DEBUG3("[%d] id:0x%x, state:%d", xx, p_scb->ll_cb.comm.id, p_scb->state );
+            OBEX_TRACE_DEBUG3("[%d] id:0x%x, state:%d\n", xx, p_scb->ll_cb.comm.id, p_scb->state );
 
             if (p_scb->ll_cb.comm.p_send_fn == (tOBEX_SEND_FN *)obx_rfc_snd_msg
                 && p_scb->state == OBEX_SS_NOT_CONNECTED)
@@ -413,7 +427,7 @@ void obx_add_port(tOBEX_HANDLE obx_handle)
             for (xx=0; xx < p_cb->num_sess && p_cb->sess[xx]; xx++)
             {
                 p_scb = &obx_cb.sr_sess[p_cb->sess[xx]-1];
-                OBEX_TRACE_DEBUG2("[%d] port_handle:%d", xx, p_scb->ll_cb.port.port_handle );
+                OBEX_TRACE_DEBUG2("[%d] port_handle:%d\n", xx, p_scb->ll_cb.port.port_handle );
                 if (!p_scb->ll_cb.comm.id)
                 {
                     status = obx_open_port(&p_scb->ll_cb.port, PB_BT_BD_ANY, p_cb->scn);
@@ -449,14 +463,14 @@ void obx_sr_proc_evt(tOBEX_PORT_EVT *p_evt)
     tOBEX_PORT_CB *p_pcb = p_evt->p_pcb;
 
 
-    OBEX_TRACE_DEBUG2("obx_sr_proc_evt handle: 0x%x, port_handle:%d", p_evt->p_pcb->handle, p_evt->p_pcb->port_handle);
+    OBEX_TRACE_DEBUG2("obx_sr_proc_evt handle: 0x%x, port_handle:%d\n", p_evt->p_pcb->handle, p_evt->p_pcb->port_handle);
     if (p_pcb->handle == 0 || p_pcb->p_send_fn != (tOBEX_SEND_FN*)obx_rfc_snd_msg)
         return;
 
     if ((p_scb = obx_sr_get_scb(p_pcb->handle)) == NULL)
     {
         /* probably already close the port and deregistered from OBX */
-        OBEX_TRACE_ERROR1("Could not find control block for handle: 0x%x", p_pcb->handle);
+        OBEX_TRACE_ERROR1("Could not find control block for handle: 0x%x\n", p_pcb->handle);
         return;
     }
 
@@ -494,7 +508,7 @@ void obx_sr_proc_evt(tOBEX_PORT_EVT *p_evt)
                 }
                 else
                 {
-                    OBEX_TRACE_ERROR0("bad SM event" );
+                    OBEX_TRACE_ERROR0("bad SM event\n");
                 }
             }
             else
@@ -520,7 +534,7 @@ void obx_sr_proc_evt(tOBEX_PORT_EVT *p_evt)
     {
         if (p_evt->code & PORT_EV_FCS)
         {
-            OBEX_TRACE_EVENT0("sr flow control event - FCS SET ----" );
+            OBEX_TRACE_EVENT0("sr flow control event - FCS SET ----\n");
             obx_ssm_event(p_scb, OBEX_FCS_SET_SEVT, NULL);
         }
     } /* PORT_EV_FC */
@@ -540,7 +554,7 @@ tOBEX_STATUS obx_open_port(tOBEX_PORT_CB *p_pcb, const BD_ADDR bd_addr, UINT8 sc
     BOOLEAN     is_server = (p_pcb->handle & OBEX_CL_HANDLE_MASK)?FALSE:TRUE;
     UINT16      max_mtu = OBEX_MAX_MTU;
 
-    OBEX_TRACE_DEBUG2("obx_open_port rxmtu:%d, cbmtu:%d", p_pcb->rx_mtu, max_mtu );
+    OBEX_TRACE_DEBUG2("obx_open_port rxmtu:%d, cbmtu:%d\n", p_pcb->rx_mtu, max_mtu );
 
     /* clear buffers from previous connection */
     obx_free_buf ((tOBEX_LL_CB*)p_pcb);
@@ -563,7 +577,7 @@ tOBEX_STATUS obx_open_port(tOBEX_PORT_CB *p_pcb, const BD_ADDR bd_addr, UINT8 sc
                                         is_server, (UINT16)(p_pcb->rx_mtu+1), (BD_ADDR_PTR)bd_addr,
                                         &p_pcb->port_handle, obx_rfc_mgmt_cback);
 
-    OBEX_TRACE_DEBUG3("obx_open_port rxmtu:%d, port_handle:%d, port.handle:0x%x",
+    OBEX_TRACE_DEBUG3("obx_open_port rxmtu:%d, port_handle:%d, port.handle:0x%x\n",
         p_pcb->rx_mtu, p_pcb->port_handle, p_pcb->handle );
 
     if (!is_server)
@@ -619,7 +633,7 @@ BOOLEAN obx_rfc_snd_msg(tOBEX_PORT_CB *p_pcb)
 
     result = wiced_bt_rfcomm_write_data(p_pcb->port_handle, ((char*)(p_pcb->p_txmsg + 1)) + p_pcb->p_txmsg->offset, p_pcb->p_txmsg->len, &bytes_written);
 
-    OBEX_TRACE_DEBUG4("obx_rfc_snd_msg port_handle:%d, port.handle:0x%x result:%d written:%d", p_pcb->port_handle, p_pcb->handle, result, bytes_written);
+    OBEX_TRACE_DEBUG4("obx_rfc_snd_msg port_handle:%d, port.handle:0x%x result:%d written:%d\n", p_pcb->port_handle, p_pcb->handle, result, bytes_written);
 
     obx_start_timer ((tOBEX_COMM_CB *)p_pcb);
 

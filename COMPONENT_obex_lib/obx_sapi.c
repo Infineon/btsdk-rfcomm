@@ -1,5 +1,5 @@
 /*
- * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2016-2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -70,14 +70,14 @@ wiced_bt_obex_status_t wiced_bt_obex_start_server(wiced_bt_obex_start_params_t *
 
     if (p_params->max_sessions > OBEX_MAX_SR_SESSION)
     {
-        OBEX_TRACE_ERROR2("OBEX_StartServer bad max_sessions:%d (1-%d)",
+        OBEX_TRACE_ERROR2("OBEX_StartServer bad max_sessions:%d (1-%d)\n",
             p_params->max_sessions, OBEX_MAX_SR_SESSION);
         return OBEX_BAD_PARAMS;
     }
 
     if (p_params->scn == 0 && L2C_INVALID_PSM(p_params->psm))
     {
-        OBEX_TRACE_ERROR2("OBEX_StartServer bad scn:%d and psm:0x%x", p_params->scn, p_params->psm);
+        OBEX_TRACE_ERROR2("OBEX_StartServer bad scn:%d and psm:0x%x\n", p_params->scn, p_params->psm);
         return OBEX_BAD_PARAMS;
     }
 
@@ -129,7 +129,7 @@ wiced_bt_obex_status_t wiced_bt_obex_start_server(wiced_bt_obex_start_params_t *
                 /* no target, who, connection id headers for this case */
                 p_cb->target.len = 0;
             }
-            OBEX_TRACE_DEBUG3("OBEX_StartServer target len:%d, authenticate:%d handle:0x%x",
+            OBEX_TRACE_DEBUG3("OBEX_StartServer target len:%d, authenticate:%d handle:0x%x\n",
                 p_cb->target.len, p_params->authenticate, p_scb->ll_cb.port.handle);
             p_cb->p_cback       = p_params->p_cback;
             p_scb->state         = OBEX_SS_NOT_CONNECTED;
@@ -227,7 +227,7 @@ tOBEX_STATUS OBEX_AddSuspendedSession(tOBEX_HANDLE handle, BD_ADDR peer_addr, UI
     BOOLEAN     added = FALSE;
     UINT8       saved_xx = 0;
 
-    OBEX_TRACE_DEBUG2("OBEX_AddSuspendedSession BDA: %06x%06x",
+    OBEX_TRACE_DEBUG2("OBEX_AddSuspendedSession BDA: %06x%06x\n",
                     (peer_addr[0]<<16)+(peer_addr[1]<<8)+peer_addr[2],
                     (peer_addr[3]<<16)+(peer_addr[4]<<8)+peer_addr[5]);
     if (p_cb && p_sess_info && p_cb->max_suspend)
@@ -243,7 +243,7 @@ tOBEX_STATUS OBEX_AddSuspendedSession(tOBEX_HANDLE handle, BD_ADDR peer_addr, UI
         {
             for (xx=0, p_spndcb=p_cb->p_suspend; xx<p_cb->max_suspend; xx++, p_spndcb++)
             {
-                OBEX_TRACE_DEBUG4("[%d] state: %d, ssn:%d BDA: %08x", xx, p_spndcb->state, p_spndcb->ssn,
+                OBEX_TRACE_DEBUG4("[%d] state: %d, ssn:%d BDA: %08x\n", xx, p_spndcb->state, p_spndcb->ssn,
                    (p_spndcb->peer_addr[2]<<24)+(p_spndcb->peer_addr[3]<<16)+(p_spndcb->peer_addr[4]<<8)+p_spndcb->peer_addr[5]);
                 if (p_spndcb->state == OBEX_SS_NULL || memcmp(p_spndcb->peer_addr, peer_addr, BD_ADDR_LEN) == 0)
                 {
@@ -257,13 +257,13 @@ tOBEX_STATUS OBEX_AddSuspendedSession(tOBEX_HANDLE handle, BD_ADDR peer_addr, UI
                         /* this entry has infinite timeout; just use it */
                         ticks = 0;
                         saved_xx = xx;
-                        OBEX_TRACE_DEBUG1("[%d] infinite timeout", xx );
+                        OBEX_TRACE_DEBUG1("[%d] infinite timeout\n", xx );
                     }
                     /* find the entry the expires in the shortest time  */
                     else
                     {
                         remain_ticks = 0;//btu_remaining_time(&p_spndcb->stle);
-                        OBEX_TRACE_DEBUG2("[%d] remain_ticks: %d", xx, remain_ticks );
+                        OBEX_TRACE_DEBUG2("[%d] remain_ticks: %d\n", xx, remain_ticks );
                         if (remain_ticks < ticks)
                         {
                             ticks = remain_ticks;
@@ -279,7 +279,7 @@ tOBEX_STATUS OBEX_AddSuspendedSession(tOBEX_HANDLE handle, BD_ADDR peer_addr, UI
                 added = TRUE;
                 xx = saved_xx; /* this is for debug trace; don't optimize */
                 p_spndcb = &p_cb->p_suspend[xx];
-                OBEX_TRACE_DEBUG1("reuse entry [%d]", xx );
+                OBEX_TRACE_DEBUG1("reuse entry [%d]\n", xx );
             }
 
             if (added)
@@ -288,7 +288,7 @@ tOBEX_STATUS OBEX_AddSuspendedSession(tOBEX_HANDLE handle, BD_ADDR peer_addr, UI
                 p_spndcb->state = p_sess_info[OBEX_SESSION_INFO_ST_IDX];
                 p_spndcb->ssn = ssn;
                 p_spndcb->offset = offset;
-                OBEX_TRACE_DEBUG6("[%d] timeout: %d state:%d ssn:%d offset:%d, BDA: %08x",
+                OBEX_TRACE_DEBUG6("[%d] timeout: %d state:%d ssn:%d offset:%d, BDA: %08x\n",
                     xx, timeout, p_spndcb->state, ssn, offset,
                    (peer_addr[2]<<24)+(peer_addr[3]<<16)+(peer_addr[4]<<8)+peer_addr[5]);
                 memcpy(p_spndcb->peer_addr, peer_addr, BD_ADDR_LEN);
@@ -297,7 +297,7 @@ tOBEX_STATUS OBEX_AddSuspendedSession(tOBEX_HANDLE handle, BD_ADDR peer_addr, UI
                     p_spndcb->stle.param = (TIMER_PARAM_TYPE)p_spndcb;
                     wiced_init_timer(&p_spndcb->stle.wiced_timer, obx_sr_timeout, (uint32_t)&p_spndcb->stle, WICED_SECONDS_TIMER);
                     wiced_start_timer(&p_spndcb->stle.wiced_timer, timeout);
-                    OBEX_TRACE_DEBUG2("timeout: %d ticks:%d", timeout, p_spndcb->stle.ticks);
+                    OBEX_TRACE_DEBUG2("timeout: %d ticks:%d\n", timeout, p_spndcb->stle.ticks);
                 }
                 else
                     p_spndcb->stle.param = 0;
@@ -339,7 +339,7 @@ wiced_bt_obex_status_t wiced_bt_obex_send_response(wiced_bt_obex_handle_t handle
             }
             else
             {
-                OBEX_TRACE_DEBUG1("OBEX_ConnectRsp Bad Handle: 0x%x", handle);
+                OBEX_TRACE_DEBUG1("OBEX_ConnectRsp Bad Handle: 0x%x\n", handle);
                 status = OBEX_BAD_HANDLE;
             }
         }
@@ -402,7 +402,7 @@ wiced_bt_obex_status_t wiced_bt_obex_session_response(wiced_bt_obex_handle_t han
     UINT32      timeout;
     tOBEX_SESS_ST    old_sess_st;
 
-    OBEX_TRACE_API0("OBEX_SessionRsp");
+    OBEX_TRACE_API0("OBEX_SessionRsp\n");
     if (p_scb)
     {
         old_sess_st = p_scb->sess_st;
@@ -423,7 +423,7 @@ wiced_bt_obex_status_t wiced_bt_obex_session_response(wiced_bt_obex_handle_t han
                     GKI_freebuf (p_rsp);
                     if (p_pkt)
                         GKI_freebuf (p_pkt);
-                    OBEX_TRACE_DEBUG0("OBEX_SessionRsp do not need to be called for CREATE and RESUME");
+                    OBEX_TRACE_DEBUG0("OBEX_SessionRsp do not need to be called for CREATE and RESUME\n");
                     return OBEX_SUCCESS;
                 case OBEX_SESS_SUSPEND:
                     p_scb->sess_st = OBEX_SESS_SUSPENDED;
@@ -448,7 +448,7 @@ wiced_bt_obex_status_t wiced_bt_obex_session_response(wiced_bt_obex_handle_t han
 
             p_rsp->event = OBEX_SESSION_CFM_SEVT + 1;
         }
-        OBEX_TRACE_DEBUG3("Rsp sess_st:%d->%d status:%d", old_sess_st, p_scb->sess_st, status);
+        OBEX_TRACE_DEBUG3("Rsp sess_st:%d->%d status:%d\n", old_sess_st, p_scb->sess_st, status);
 
         obx_ssm_event(p_scb, OBEX_SESSION_CFM_SEVT, p_rsp);
         /* clear the "previous" session state as required by earlier comment */
@@ -536,7 +536,7 @@ tOBEX_STATUS obx_prepend_rsp_msg(tOBEX_HANDLE handle, tOBEX_SR_EVENT event, UINT
         if (skip_clear == FALSE && (p_scb->srmp & OBEX_SRMP_WAITING_CLEARED) &&
             !((p_scb->srmp & OBEX_SRMP_WAIT) == OBEX_SRMP_WAIT))
         {
-            OBEX_TRACE_EVENT0("SRM is engaged after peer cleared wait flag");
+            OBEX_TRACE_EVENT0("SRM is engaged after peer cleared wait flag\n");
             p_scb->srmp &= ~OBEX_SRMP_WAITING_CLEARED;
             p_scb->srm |= OBEX_SRM_ENGAGE;
         }

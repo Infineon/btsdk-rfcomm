@@ -1,5 +1,5 @@
 /*
- * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2016-2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -338,7 +338,7 @@ static void obx_md5_transform(word32 buf[4], word32 const in[16])
         {
             k = j--;
             /*
-            OBEX_TRACE_DEBUG4( "f1 a: %d, yy: %d, inc: 0x%x, var: %d",
+            OBEX_TRACE_DEBUG4( "f1 a: %d, yy: %d, inc: 0x%x, var: %d\n",
                 obx_md5_a[k], yy, obx_md5_f1[yy], obx_md5_var1[i]);
              */
             MD5STEP(F1, a[obx_md5_a[k]], a[obx_md5_a[k+1]], a[obx_md5_a[k+2]], a[obx_md5_a[k+3]],
@@ -356,7 +356,7 @@ static void obx_md5_transform(word32 buf[4], word32 const in[16])
         {
             k = j--;
             /*
-            OBEX_TRACE_DEBUG4( "f2 a: %d, yy: %d, inc: 0x%x, var: %d",
+            OBEX_TRACE_DEBUG4( "f2 a: %d, yy: %d, inc: 0x%x, var: %d\n",
                 obx_md5_a[k], yy, obx_md5_f2[zz], obx_md5_var2[i]);
              */
             MD5STEP(F2, a[obx_md5_a[k]], a[obx_md5_a[k+1]], a[obx_md5_a[k+2]], a[obx_md5_a[k+3]],
@@ -375,7 +375,7 @@ static void obx_md5_transform(word32 buf[4], word32 const in[16])
         {
             k = j--;
             /*
-            OBEX_TRACE_DEBUG4( "f3 a: %d, yy: %d, inc: 0x%x, var: %d",
+            OBEX_TRACE_DEBUG4( "f3 a: %d, yy: %d, inc: 0x%x, var: %d\n",
                 obx_md5_a[k], yy, obx_md5_f3[zz], obx_md5_var3[i]);
              */
             MD5STEP(F3, a[obx_md5_a[k]], a[obx_md5_a[k+1]], a[obx_md5_a[k+2]], a[obx_md5_a[k+3]],
@@ -395,7 +395,7 @@ static void obx_md5_transform(word32 buf[4], word32 const in[16])
         {
             k = j--;
             /*
-            OBEX_TRACE_DEBUG4( "f4 a: %d, yy: %d, inc: 0x%x, var: %d",
+            OBEX_TRACE_DEBUG4( "f4 a: %d, yy: %d, inc: 0x%x, var: %d\n",
                 obx_md5_a[k], yy, obx_md5_f4[zz], obx_md5_var4[i]);
              */
             MD5STEP(F4, a[obx_md5_a[k]], a[obx_md5_a[k+1]], a[obx_md5_a[k+2]], a[obx_md5_a[k+3]],

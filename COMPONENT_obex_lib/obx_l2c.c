@@ -1,5 +1,5 @@
 /*
- * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2016-2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -157,12 +157,12 @@ tOBEX_SR_CB *obx_sr_cb_by_psm (UINT16 psm)
     {
         if (obx_cb.server[xx].psm == psm)
         {
-            OBEX_TRACE_ERROR1 ("obx_sr_cb_by_psm: Found server with index %d", xx);
+            OBEX_TRACE_ERROR1 ("obx_sr_cb_by_psm: Found server with index %d\n", xx);
             return (&obx_cb.server[xx]);
         }
     }
 
-    OBEX_TRACE_ERROR0 ("obx_sr_cb_by_psm: Server NOT FOUND!");
+    OBEX_TRACE_ERROR0 ("obx_sr_cb_by_psm: Server NOT FOUND!\n");
     return (NULL);
 }
 
@@ -302,7 +302,7 @@ void obx_sr_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg)
             /* store LCID */
             p_lcb->lcid = p_ind->lcid;
             obx_cb.l2c_map[p_ind->lcid - L2CAP_BASE_APPL_CID] = p_lcb->handle;
-            OBEX_TRACE_DEBUG2("l2c_map[%d]=0x%x",p_ind->lcid - L2CAP_BASE_APPL_CID, p_lcb->handle );
+            OBEX_TRACE_DEBUG2("l2c_map[%d]=0x%x\n",p_ind->lcid - L2CAP_BASE_APPL_CID, p_lcb->handle );
 
             /* transition to configuration state */
             p_lcb->ch_state = OBEX_CH_CFG;
@@ -338,7 +338,7 @@ void obx_sr_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg)
 
     case OBEX_L2C_EVT_DATA_IND:
         p_pkt = p_msg->param.p_pkt;
-        OBEX_TRACE_DEBUG2("obx_sr_proc_l2c_evt len:%d, offset:%d", p_pkt->len, p_pkt->offset );
+        OBEX_TRACE_DEBUG2("obx_sr_proc_l2c_evt len:%d, offset:%d\n", p_pkt->len, p_pkt->offset );
 #if (BT_USE_TRACES == TRUE)
         len = p_pkt->len;
         if (len > 0x20)
@@ -350,7 +350,7 @@ void obx_sr_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg)
         memset(p_rxh, 0, sizeof(tOBEX_RX_HDR));
         if (obx_verify_request (opcode, p_rxh) == OBEX_BAD_SM_EVT)
         {
-            OBEX_TRACE_ERROR1("bad opcode:0x%x disconnect now", opcode );
+            OBEX_TRACE_ERROR1("bad opcode:0x%x disconnect now\n", opcode );
             GKI_freebuf(p_pkt);
             /* coverity [overrun-call] */
             obx_ssm_event(p_scb, OBEX_TX_EMPTY_SEVT, NULL);
@@ -358,7 +358,7 @@ void obx_sr_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg)
         }
         p_pkt->event    = obx_sm_evt_to_api_evt[p_rxh->sm_evt];
         p_pkt->layer_specific    = GKI_get_buf_size(p_pkt) - BT_HDR_SIZE - p_pkt->offset - p_pkt->len;
-        OBEX_TRACE_DEBUG3("opcode:0x%x event:%d sm_evt:%d", opcode, p_pkt->event, p_rxh->sm_evt );
+        OBEX_TRACE_DEBUG3("opcode:0x%x event:%d sm_evt:%d\n", opcode, p_pkt->event, p_rxh->sm_evt );
 #if BT_TRACE_PROTOCOL == TRUE
         DispObxMsg(p_pkt, (BOOLEAN)(obx_api_evt_to_disp_type[p_pkt->event] | OBEX_DISP_IS_RECV));
 #endif
@@ -376,7 +376,7 @@ void obx_sr_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg)
                     p_lcb->stopped = TRUE;
                     L2CA_FlowControl(p_lcb->lcid, FALSE);
                 }
-                OBEX_TRACE_DEBUG4 ("obx_sr_proc_l2c_evt stopped:%d state:%d rx_q.count:%d, srm:0x%x",
+                OBEX_TRACE_DEBUG4 ("obx_sr_proc_l2c_evt stopped:%d state:%d rx_q.count:%d, srm:0x%x\n",
                     p_lcb->stopped, p_scb->state, p_lcb->rx_q.count, p_scb->srm );
             }
         }
@@ -494,7 +494,7 @@ tOBEX_L2C_CB * obx_lcid_2lcb(UINT16 lcid)
      * assume that port_handle is within range */
     obx_handle  = obx_cb.l2c_map[lcid-L2CAP_BASE_APPL_CID];
     obx_mskd_handle = obx_handle&OBEX_HANDLE_MASK;
-    OBEX_TRACE_DEBUG3("obx_lcid_2lcb lcid:0x%x obx_handle:0x%x obx_mskd_handle:0x%x",
+    OBEX_TRACE_DEBUG3("obx_lcid_2lcb lcid:0x%x obx_handle:0x%x obx_mskd_handle:0x%x\n",
         lcid, obx_handle, obx_mskd_handle);
 
     if (obx_handle > 0)
@@ -508,7 +508,7 @@ tOBEX_L2C_CB * obx_lcid_2lcb(UINT16 lcid)
         {
             p_cb = &obx_cb.server[obx_mskd_handle - 1];
             p_lcb = &obx_cb.sr_sess[p_cb->sess[OBEX_DEC_SESS_IND(obx_handle)]-1].ll_cb.l2c;
-            OBEX_TRACE_DEBUG3("p_lcb lcid:0x%x sess_ind:%d, sr_sess[%d]",
+            OBEX_TRACE_DEBUG3("p_lcb lcid:0x%x sess_ind:%d, sr_sess[%d]\n",
                 p_lcb->lcid, OBEX_DEC_SESS_IND(obx_handle), p_cb->sess[OBEX_DEC_SESS_IND(obx_handle)]-1);
         }
     }
@@ -530,7 +530,7 @@ static void obx_l2c_checks_ch_flags (tOBEX_L2C_CB     *p_lcb)
 {
     tOBEX_L2C_EVT_PARAM  evt_param;
 
-    OBEX_TRACE_DEBUG1 ("obx_l2c_checks_ch_flags ch_flags:0x%x ", p_lcb->ch_flags);
+    OBEX_TRACE_DEBUG1 ("obx_l2c_checks_ch_flags ch_flags:0x%x\n", p_lcb->ch_flags);
     /* if all the required ch_flags are set, report the OPEN event now */
     if ((p_lcb->ch_flags & OBEX_L2C_CONN_RQS_DONE) == OBEX_L2C_CONN_RQS_DONE)
     {
@@ -608,7 +608,7 @@ void obx_cl_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg)
         memset(p_rxh, 0, sizeof(tOBEX_RX_HDR));
         obx_verify_response (opcode, p_rxh);
 
-        OBEX_TRACE_DEBUG4 ("obx_cl_proc_l2c_evt event:0x%x/0x%x state:%d srm:0x%x", p_pkt->event, p_rxh->sm_evt, p_cl_cb->state, p_cl_cb->srm );
+        OBEX_TRACE_DEBUG4 ("obx_cl_proc_l2c_evt event:0x%x/0x%x state:%d srm:0x%x\n", p_pkt->event, p_rxh->sm_evt, p_cl_cb->state, p_cl_cb->srm );
         if (p_rxh->sm_evt != OBEX_BAD_SM_EVT)
         {
             if (GKI_queue_is_empty(&p_l2cb->rx_q) && (p_cl_cb->srm & OBEX_SRM_WAIT_UL) == 0)
@@ -623,7 +623,7 @@ void obx_cl_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg)
                     p_l2cb->stopped = TRUE;
                     L2CA_FlowControl(p_l2cb->lcid, FALSE);
                 }
-                OBEX_TRACE_DEBUG3 ("obx_cl_proc_l2c_evt rx_q.count:%d, stopped:%d state:%d", p_l2cb->rx_q.count, p_l2cb->stopped, p_cl_cb->state );
+                OBEX_TRACE_DEBUG3 ("obx_cl_proc_l2c_evt rx_q.count:%d, stopped:%d state:%d\n", p_l2cb->rx_q.count, p_l2cb->stopped, p_cl_cb->state );
             }
         }
         else
@@ -648,7 +648,7 @@ static void obx_l2c_sec_check_complete (BD_ADDR bd_addr, BOOLEAN transport, void
 {
     tOBEX_L2C_CB     *p_lcb = (tOBEX_L2C_CB *)p_ref_data;
 
-    OBEX_TRACE_DEBUG3 ("obx_l2c_sec_check_complete ch_state:%d, ch_flags:0x%x, status:%d",
+    OBEX_TRACE_DEBUG3 ("obx_l2c_sec_check_complete ch_state:%d, ch_flags:0x%x, status:%d\n",
         p_lcb->ch_state, p_lcb->ch_flags, res);
     if (p_lcb->ch_state == OBEX_CH_IDLE)
         return;
@@ -685,7 +685,7 @@ static void obx_l2c_connect_cfm_cback(UINT16 lcid, UINT16 result)
     /* look up lcb for this channel */
     if ((p_lcb = obx_lcid_2lcb(lcid)) != NULL)
     {
-        OBEX_TRACE_DEBUG1("obx_l2c_connect_cfm_cback ch_state:%d", p_lcb->ch_state);
+        OBEX_TRACE_DEBUG1("obx_l2c_connect_cfm_cback ch_state:%d\n", p_lcb->ch_state);
         /* if in correct state */
         if (p_lcb->ch_state == OBEX_CH_CONN)
         {
@@ -807,7 +807,7 @@ static void obx_l2c_config_ind_cback(UINT16 lcid, wiced_bt_l2cap_cfg_information
         }
         else    /* Don't include in the response */
             p_cfg->mtu_present = FALSE;
-        OBEX_TRACE_DEBUG2 ("obx_l2c_config_ind_cback tx_mtu:%d use:%d", p_lcb->tx_mtu, max_mtu);
+        OBEX_TRACE_DEBUG2 ("obx_l2c_config_ind_cback tx_mtu:%d use:%d\n", p_lcb->tx_mtu, max_mtu);
 
         p_cfg->result = L2CAP_CFG_OK;
 
@@ -905,7 +905,7 @@ static void obx_l2c_data_ind_cback(UINT16 lcid, BT_HDR *p_buf)
     if ((p_lcb = obx_lcid_2lcb(lcid)) != NULL)
     {
         evt_param.p_pkt = p_buf;
-        OBEX_TRACE_DEBUG3("obx_l2c_data_ind_cback 0x%x, len:%d, offset:%d", p_buf, p_buf->len, p_buf->offset );
+        OBEX_TRACE_DEBUG3("obx_l2c_data_ind_cback 0x%x, len:%d, offset:%d\n", p_buf, p_buf->len, p_buf->offset );
 #if (BT_USE_TRACES == TRUE)
         len = p_buf->len;
         if (len > 0x20)
@@ -934,7 +934,7 @@ static void obx_l2c_congestion_ind_cback(UINT16 lcid, BOOLEAN is_congested)
     tOBEX_L2C_CB     *p_lcb;
     tOBEX_L2C_EVT_PARAM  evt_param;
 
-    OBEX_TRACE_DEBUG2("obx_l2c_congestion_ind_cback lcid:%d, is_congested:%d",lcid, is_congested );
+    OBEX_TRACE_DEBUG2("obx_l2c_congestion_ind_cback lcid:%d, is_congested:%d\n",lcid, is_congested );
     /* look up lcb for this channel */
     if ((p_lcb = obx_lcid_2lcb(lcid)) != NULL)
     {
@@ -966,7 +966,7 @@ tOBEX_STATUS obx_open_l2c(tOBEX_CL_CB *p_cl_cb, const BD_ADDR bd_addr)
     wiced_bt_l2cap_cfg_information_t cfg;
     tL2CAP_ERTM_INFO ertm_info;
 
-    OBEX_TRACE_DEBUG2("obx_open_l2c rxmtu:%d, cbmtu:%d", p_l2cb->rx_mtu, max_mtu );
+    OBEX_TRACE_DEBUG2("obx_open_l2c rxmtu:%d, cbmtu:%d\n", p_l2cb->rx_mtu, max_mtu );
 
     /* clear buffers from previous connection */
     obx_free_buf(&p_cl_cb->ll_cb);
@@ -1002,7 +1002,7 @@ tOBEX_STATUS obx_open_l2c(tOBEX_CL_CB *p_cl_cb, const BD_ADDR bd_addr)
         }
     }
 
-    OBEX_TRACE_DEBUG3("obx_open_l2c rxmtu:%d, lcid:%d, l2c.handle:0x%x",
+    OBEX_TRACE_DEBUG3("obx_open_l2c rxmtu:%d, lcid:%d, l2c.handle:0x%x\n",
         p_l2cb->rx_mtu, p_l2cb->lcid, p_l2cb->handle );
 
     if (status == OBEX_SUCCESS)
@@ -1044,12 +1044,12 @@ BOOLEAN obx_l2c_snd_msg(tOBEX_L2C_CB *p_l2cb)
 
     if (!p_l2cb->cong)
     {
-        OBEX_TRACE_DEBUG2("obx_l2c_snd_msg len:%d, offset:0x%x", p_l2cb->p_txmsg->len, p_l2cb->p_txmsg->offset);
+        OBEX_TRACE_DEBUG2("obx_l2c_snd_msg len:%d, offset:0x%x\n", p_l2cb->p_txmsg->len, p_l2cb->p_txmsg->offset);
 
         obx_stop_timer(&p_l2cb->tle);
         if (L2CA_DATA_WRITE (p_l2cb->lcid, p_l2cb->p_txmsg) == L2CAP_DW_CONGESTED)
         {
-            OBEX_TRACE_DEBUG0("obx_l2c_snd_msg congested");
+            OBEX_TRACE_DEBUG0("obx_l2c_snd_msg congested\n");
             p_l2cb->cong = TRUE;
         }
         obx_start_timer ((tOBEX_COMM_CB *)p_l2cb);

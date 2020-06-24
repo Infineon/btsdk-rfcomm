@@ -1,5 +1,5 @@
 /*
- * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2016-2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -80,7 +80,7 @@ tOBEX_SR_STATE obx_sa_snd_rsp(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
         }
     }
 
-    OBEX_TRACE_DEBUG2("obx_sa_snd_rsp sess_st:%d, event:%d", p_scb->sess_st, p_pkt->event);
+    OBEX_TRACE_DEBUG2("obx_sa_snd_rsp sess_st:%d, event:%d\n", p_scb->sess_st, p_pkt->event);
     if ((p_scb->sess_st == OBEX_SESS_ACTIVE) && (p_pkt->event != (OBEX_SESSION_CFM_SEVT + 1)))
     {
         p_scb->ssn++;
@@ -98,7 +98,7 @@ tOBEX_SR_STATE obx_sa_snd_rsp(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
 #ifdef OBEX_LIB_L2CAP_INCLUDED
             if (p_scb->ll_cb.comm.p_send_fn == (tOBEX_SEND_FN *)obx_l2c_snd_msg)
             {
-                OBEX_TRACE_DEBUG1("obx_sa_snd_rsp cong:%d", p_scb->ll_cb.l2c.cong);
+                OBEX_TRACE_DEBUG1("obx_sa_snd_rsp cong:%d\n", p_scb->ll_cb.l2c.cong);
                 if (p_scb->ll_cb.l2c.cong)
                 {
                     not_cong = FALSE;
@@ -156,7 +156,7 @@ tOBEX_SR_STATE obx_sa_snd_part(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
             obx_ssm_event(p_scb, (tOBEX_SR_EVENT)(p_pkt->event-1), p_pkt);
         }
 
-        OBEX_TRACE_DEBUG3("obx_sa_snd_part state:%d, srm:0x%x, rsp_code:0x%x", p_scb->state, p_scb->srm, rsp_code);
+        OBEX_TRACE_DEBUG3("obx_sa_snd_part state:%d, srm:0x%x, rsp_code:0x%x\n", p_scb->state, p_scb->srm, rsp_code);
         if (p_scb->state == OBEX_SS_GET_SRM)
         {
             rsp_code &= ~OBEX_FINAL;
@@ -210,7 +210,7 @@ tOBEX_SR_STATE obx_sa_op_rsp(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
         state = obx_sa_snd_rsp(p_scb, p_pkt);
 #if (BT_USE_TRACES == TRUE)
     else
-        OBEX_TRACE_WARNING0("OBX is not waiting for a rsp API!!");
+        OBEX_TRACE_WARNING0("OBX is not waiting for a rsp API!!\n");
 #endif
     return state;
 }
@@ -267,7 +267,7 @@ static UINT8 obx_verify_target(tOBEX_SR_CB *p_cb, tOBEX_SR_SESS_CB *p_scb, BT_HD
     if (conn_id != 0 && p_target != NULL)
         rsp_code = OBEX_RSP_BAD_REQUEST;
 
-    OBEX_TRACE_DEBUG3("obx_verify_target rsp: %x, id:%x, code:%x",
+    OBEX_TRACE_DEBUG3("obx_verify_target rsp: %x, id:%x, code:%x\n",
         rsp_code, conn_id, ((tOBEX_RX_HDR *)(p_pkt + 1))->code);
     if (rsp_code != OBEX_RSP_OK)
         p_pkt->event = OBEX_CONNECT_RSP_EVT;
@@ -354,7 +354,7 @@ tOBEX_SR_STATE obx_sa_connect_ind(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
     /* clear the SRM bits; leave only the enabled bit */
     p_scb->srm &= OBEX_SRM_ENABLE;
 
-    OBEX_TRACE_DEBUG0("obx_sa_connect_ind");
+    OBEX_TRACE_DEBUG0("obx_sa_connect_ind\n");
     p_scb->api_evt = OBEX_NULL_EVT;
 
     /* verify that the connect request is OK */
@@ -366,7 +366,7 @@ tOBEX_SR_STATE obx_sa_connect_ind(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
             /* if Connection ID is used for this connection and none assigned yet,
              * - assign one  */
             p_scb->conn_id = obx_sr_get_next_conn_id();
-            OBEX_TRACE_DEBUG1(" **** obx_sr_get_next_conn_id (0x%08x)", p_scb->conn_id);
+            OBEX_TRACE_DEBUG1(" **** obx_sr_get_next_conn_id (0x%08x)\n", p_scb->conn_id);
         }
 
         if (p_scb->sess_st == OBEX_SESS_ACTIVE)
@@ -445,7 +445,7 @@ tOBEX_SR_STATE obx_sa_connection_error(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
     tOBEX_SR_CBACK   *p_cback = NULL;
     tOBEX_SR_STATE   save_state;
 
-    OBEX_TRACE_DEBUG4("obx_sa_connection_error tx_mtu: %d, sess_st:%d state:%d, prev_state:%d",
+    OBEX_TRACE_DEBUG4("obx_sa_connection_error tx_mtu: %d, sess_st:%d state:%d, prev_state:%d\n",
         p_scb->ll_cb.comm.tx_mtu, p_scb->sess_st, p_scb->state, p_scb->prev_state);
 
     if (p_cb)
@@ -488,7 +488,7 @@ tOBEX_SR_STATE obx_sa_connection_error(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
             }
         }
         p_scb->sess_info[OBEX_SESSION_INFO_ST_IDX] = save_state;
-        OBEX_TRACE_DEBUG2("saved state:0x%x, srm:0x%x", save_state, p_scb->sess_info[OBEX_SESSION_INFO_SRM_IDX]);
+        OBEX_TRACE_DEBUG2("saved state:0x%x, srm:0x%x\n", save_state, p_scb->sess_info[OBEX_SESSION_INFO_SRM_IDX]);
         memcpy(param.sess.peer_addr, p_scb->peer_addr, BD_ADDR_LEN);
         p_scb->sess_st = OBEX_SESS_NONE;
         if (p_cback)
@@ -603,7 +603,7 @@ tOBEX_SR_STATE obx_sa_rej_req(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
     p_rxh   = (tOBEX_RX_HDR *)(p_pkt + 1);
     req_code            = p_rxh->code & ~OBEX_FINAL;
 
-    OBEX_TRACE_DEBUG0( "obx_sa_rej_req" ) ;
+    OBEX_TRACE_DEBUG0( "obx_sa_rej_req\n");
     if (p_pkt)
         GKI_freebuf(p_pkt);
 
@@ -753,7 +753,7 @@ tOBEX_SR_STATE obx_sa_get_req(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
     tOBEX_SR_STATE   state = OBEX_SS_NULL;
     tOBEX_SR_CB      *p_cb;
 
-    OBEX_TRACE_DEBUG2("obx_sa_get_req srmp:0x%x final:%d", p_scb->srmp, p_scb->param.get.final);
+    OBEX_TRACE_DEBUG2("obx_sa_get_req srmp:0x%x final:%d\n", p_scb->srmp, p_scb->param.get.final);
     if (p_scb->srmp & OBEX_SRMP_NONF)
     {
         /* the GET request does not set the final bit yet.
@@ -795,25 +795,25 @@ static tOBEX_STATUS obx_sa_make_sess_id (tOBEX_SR_SESS_CB *p_scb, UINT8 *p_sess_
 
     /* check the device address session parameter */
     ind = obx_read_triplet(p_triplet, num_triplet, OBEX_TAG_SESS_PARAM_ADDR);
-    OBEX_TRACE_DEBUG2("addr ind:%d, num:%d", ind, num_triplet);
+    OBEX_TRACE_DEBUG2("addr ind:%d, num:%d\n", ind, num_triplet);
     if (ind == num_triplet || p_triplet[ind].len != BD_ADDR_LEN)
     {
-        OBEX_TRACE_ERROR0("No Device Addr parameter");
+        OBEX_TRACE_ERROR0("No Device Addr parameter\n");
         return OBEX_BAD_PARAMS;
     }
 
     if (memcmp (p_scb->peer_addr, p_triplet[ind].p_array, BD_ADDR_LEN) != 0)
     {
-        OBEX_TRACE_ERROR0("Bad Device Addr parameter");
+        OBEX_TRACE_ERROR0("Bad Device Addr parameter\n");
         return OBEX_BAD_PARAMS;
     }
 
     /* check the nonce session parameter */
     ind = obx_read_triplet(p_triplet, num_triplet, OBEX_TAG_SESS_PARAM_NONCE);
-    OBEX_TRACE_DEBUG2("nonce ind:%d, num:%d", ind, num_triplet);
+    OBEX_TRACE_DEBUG2("nonce ind:%d, num:%d\n", ind, num_triplet);
     if (ind == num_triplet || (p_triplet[ind].len < OBEX_MIN_NONCE_SIZE) || (p_triplet[ind].len > OBEX_NONCE_SIZE))
     {
-        OBEX_TRACE_ERROR0("No Nonce parameter");
+        OBEX_TRACE_ERROR0("No Nonce parameter\n");
         return OBEX_BAD_PARAMS;
     }
     p = data;
@@ -848,11 +848,11 @@ tOBEX_SR_STATE obx_sa_session_ind(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
     UINT32          timeout = OBEX_INFINITE_TIMEOUT;
     tOBEX_SR_STATE   state = OBEX_SS_NULL;
 
-    OBEX_TRACE_DEBUG0("obx_sa_session_ind");
+    OBEX_TRACE_DEBUG0("obx_sa_session_ind\n");
     OBEX_ReadTriplet(p_pkt, OBEX_HI_SESSION_PARAM, triplet, &num);
     if (p_cb->nonce == 0)
     {
-        OBEX_TRACE_ERROR0("reliable session is not supported by this server");
+        OBEX_TRACE_ERROR0("reliable session is not supported by this server\n");
         /* do not report the session_req_evt */
         p_scb->api_evt   = OBEX_NULL_EVT;
         obx_prepend_rsp_msg(p_scb->ll_cb.comm.handle, OBEX_SESSION_CFM_SEVT,
@@ -862,12 +862,12 @@ tOBEX_SR_STATE obx_sa_session_ind(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
     else if (num)
     {
         ind = obx_read_triplet(triplet, num, OBEX_TAG_SESS_PARAM_SESS_OP);
-        OBEX_TRACE_DEBUG2("sess_op ind:%d, num:%d", ind, num);
+        OBEX_TRACE_DEBUG2("sess_op ind:%d, num:%d\n", ind, num);
         if ((ind != num) && (triplet[ind].len == OBEX_LEN_SESS_PARAM_SESS_OP))
         {
             p = triplet[ind].p_array;
             p_scb->param.sess.sess_op = *p;
-            OBEX_TRACE_DEBUG1("sess_op :%d", *p);
+            OBEX_TRACE_DEBUG1("sess_op :%d\n", *p);
             switch (*p)
             {
             case OBEX_SESS_OP_CREATE:
@@ -935,7 +935,7 @@ tOBEX_SR_STATE obx_sa_session_ind(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
             }
         }
     }
-    OBEX_TRACE_DEBUG6("obx_sa_session_ind tx_mtu: %d, sess_st:%d->%d, rsp_code:0x%x, now:%d pstate:%d",
+    OBEX_TRACE_DEBUG6("obx_sa_session_ind tx_mtu: %d, sess_st:%d->%d, rsp_code:0x%x, now:%d pstate:%d\n",
         p_scb->ll_cb.comm.tx_mtu, old_sess_st, p_scb->sess_st, rsp_code, now, p_scb->prev_state);
 
     if (rsp_code == OBEX_RSP_OK)
@@ -1003,11 +1003,11 @@ tOBEX_SR_STATE obx_sa_sess_conn_ind(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
     tOBEX_SPND_CB    *p_spndcb;
     tOBEX_EVT_PARAM  param;              /* The event parameter. */
 
-    OBEX_TRACE_DEBUG0("obx_sa_sess_conn_ind");
+    OBEX_TRACE_DEBUG0("obx_sa_sess_conn_ind\n");
     OBEX_ReadTriplet(p_pkt, OBEX_HI_SESSION_PARAM, triplet, &num);
     if (p_cb->nonce == 0)
     {
-        OBEX_TRACE_ERROR0("reliable session is not supported by this server");
+        OBEX_TRACE_ERROR0("reliable session is not supported by this server\n");
         /* do not report the session_req_evt */
         p_scb->api_evt   = OBEX_NULL_EVT;
         obx_prepend_rsp_msg(p_scb->ll_cb.comm.handle, OBEX_SESSION_CFM_SEVT,
@@ -1017,12 +1017,12 @@ tOBEX_SR_STATE obx_sa_sess_conn_ind(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
     else if (num)
     {
         ind = obx_read_triplet(triplet, num, OBEX_TAG_SESS_PARAM_SESS_OP);
-        OBEX_TRACE_DEBUG2("sess_op ind:%d, num:%d", ind, num);
+        OBEX_TRACE_DEBUG2("sess_op ind:%d, num:%d\n", ind, num);
         if ((ind != num) && (triplet[ind].len == OBEX_LEN_SESS_PARAM_SESS_OP))
         {
             p = triplet[ind].p_array;
             p_scb->param.sess.sess_op = sess_op = *p;
-            OBEX_TRACE_DEBUG1("sess_op :%d", *p);
+            OBEX_TRACE_DEBUG1("sess_op :%d\n", *p);
             switch (*p)
             {
             case OBEX_SESS_OP_CREATE:
@@ -1089,7 +1089,7 @@ tOBEX_SR_STATE obx_sa_sess_conn_ind(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
                         }
                     }
                     obxu_dump_hex (p_scb->sess_info, "sess info", OBEX_SESSION_INFO_SIZE);
-                    OBEX_TRACE_DEBUG4("p_spndcb->offset: 0x%x srm:x%x op_ssn %d ssn %d", p_spndcb->offset, p_scb->sess_info[OBEX_SESSION_INFO_SRM_IDX],op_ssn,p_scb->ssn);
+                    OBEX_TRACE_DEBUG4("p_spndcb->offset: 0x%x srm:x%x op_ssn %d ssn %d\n", p_spndcb->offset, p_scb->sess_info[OBEX_SESSION_INFO_SRM_IDX],op_ssn,p_scb->ssn);
 
                     if (p_scb->sess_info[OBEX_SESSION_INFO_SRM_IDX] & OBEX_SRM_ENGAGE)
                     {
@@ -1120,7 +1120,7 @@ tOBEX_SR_STATE obx_sa_sess_conn_ind(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
                         p_scb->ssn  = op_ssn;
                     }
 
-                    OBEX_TRACE_DEBUG4("offset: 0x%x ssn:%d obj_offset:0x%x srm:0x%x", offset, p_scb->ssn, obj_offset, p_scb->sess_info[OBEX_SESSION_INFO_SRM_IDX]);
+                    OBEX_TRACE_DEBUG4("offset: 0x%x ssn:%d obj_offset:0x%x srm:0x%x\n", offset, p_scb->ssn, obj_offset, p_scb->sess_info[OBEX_SESSION_INFO_SRM_IDX]);
                 }
 
 
@@ -1142,7 +1142,7 @@ tOBEX_SR_STATE obx_sa_sess_conn_ind(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
         p_scb->api_evt   = OBEX_NULL_EVT;
         rsp_code = OBEX_RSP_BAD_REQUEST;
     }
-    OBEX_TRACE_DEBUG5("obx_sa_sess_conn_ind tx_mtu: %d, sess_st:%d->%d, rsp_code:0x%x, now:%d",
+    OBEX_TRACE_DEBUG5("obx_sa_sess_conn_ind tx_mtu: %d, sess_st:%d->%d, rsp_code:0x%x, now:%d\n",
         p_scb->ll_cb.comm.tx_mtu, old_sess_st, p_scb->sess_st, rsp_code, now);
 
     if (rsp_code == OBEX_RSP_OK)
@@ -1242,7 +1242,7 @@ tOBEX_SR_STATE obx_sa_sess_conn_ind(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
                 BE_STREAM_TO_UINT16(param.conn.mtu, p);
                 p_scb->ll_cb.comm.tx_mtu    = param.conn.mtu;
                 param.conn.handle = p_scb->ll_cb.comm.handle;
-                OBEX_TRACE_DEBUG1("RESUME tx_mtu: %d", p_scb->ll_cb.comm.tx_mtu);
+                OBEX_TRACE_DEBUG1("RESUME tx_mtu: %d\n", p_scb->ll_cb.comm.tx_mtu);
                 /* report OBEX_CONNECT_REQ_EVT to let the client know the MTU */
                 (*p_cb->p_cback)(p_scb->ll_cb.comm.handle, OBEX_CONNECT_REQ_EVT, param, NULL);
             }
@@ -1290,7 +1290,7 @@ tOBEX_SR_STATE obx_sa_wc_sess_ind(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
     tOBEX_EVT_PARAM  param;
     tOBEX_SR_CB      *p_cb = obx_sr_get_cb(p_scb->handle);
 
-    OBEX_TRACE_DEBUG1("obx_sa_wc_sess_ind sess_st:%d", p_scb->sess_st);
+    OBEX_TRACE_DEBUG1("obx_sa_wc_sess_ind sess_st:%d\n", p_scb->sess_st);
     if (p_scb->sess_st == OBEX_SESS_ACTIVE)
     {
         /* processing CloseSession */
@@ -1300,7 +1300,7 @@ tOBEX_SR_STATE obx_sa_wc_sess_ind(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
     {
         /* probably CreateSession */
         obx_sa_sess_conn_ind(p_scb, p_pkt);
-        OBEX_TRACE_DEBUG1("obx_sa_wc_sess_ind (after obx_sa_sess_conn_ind) sess_st:%d", p_scb->sess_st);
+        OBEX_TRACE_DEBUG1("obx_sa_wc_sess_ind (after obx_sa_sess_conn_ind) sess_st:%d\n", p_scb->sess_st);
         if (p_scb->sess_st == OBEX_SESS_ACTIVE)
         {
             /* after session command and still is Active
@@ -1323,16 +1323,16 @@ tOBEX_SR_STATE obx_sa_session_rsp(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
     tOBEX_SR_STATE   new_state = OBEX_SS_NULL;
     UINT8           *p;
 
-    OBEX_TRACE_DEBUG1("obx_sa_session_rsp pstate:%d", p_scb->prev_state);
+    OBEX_TRACE_DEBUG1("obx_sa_session_rsp pstate:%d\n", p_scb->prev_state);
     new_state = obx_sa_snd_rsp(p_scb, p_pkt);
-    OBEX_TRACE_DEBUG2("sess_st: %d op:%d", p_scb->sess_st, p_scb->param.sess.sess_op);
+    OBEX_TRACE_DEBUG2("sess_st: %d op:%d\n", p_scb->sess_st, p_scb->param.sess.sess_op);
     if (p_scb->sess_st == OBEX_SESS_ACTIVE && p_scb->param.sess.sess_op == OBEX_SESS_OP_RESUME)
     {
         p_scb->srm = p_scb->sess_info[OBEX_SESSION_INFO_SRM_IDX];
         new_state = p_scb->sess_info[OBEX_SESSION_INFO_ST_IDX];
         p = &p_scb->sess_info[OBEX_SESSION_INFO_ID_IDX];
         BE_STREAM_TO_UINT32(p_scb->conn_id, p);
-        OBEX_TRACE_DEBUG3("new_state; %d Connection ID: 0x%x, srm:0x%x", new_state, p_scb->conn_id, p_scb->srm);
+        OBEX_TRACE_DEBUG3("new_state; %d Connection ID: 0x%x, srm:0x%x\n", new_state, p_scb->conn_id, p_scb->srm);
 #ifdef OBEX_LIB_L2CAP_INCLUDED
         if ((p_scb->srm & OBEX_SRM_ENGAGE) && (new_state == OBEX_SS_GET_SRM))
         {
@@ -1404,7 +1404,7 @@ tOBEX_SR_STATE obx_sa_srm_put_rsp(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
     }
 
     p_scb->srm &= ~OBEX_SRM_WAIT_UL;
-    OBEX_TRACE_DEBUG2("obx_sa_srm_put_rsp srm:0x%x rsp_code:0x%x", p_scb->srm, rsp_code);
+    OBEX_TRACE_DEBUG2("obx_sa_srm_put_rsp srm:0x%x rsp_code:0x%x\n", p_scb->srm, rsp_code);
     if (p_scb->srm & OBEX_SRM_NEXT)
     {
         p_scb->srm &= ~OBEX_SRM_NEXT;
@@ -1419,7 +1419,7 @@ tOBEX_SR_STATE obx_sa_srm_put_rsp(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
         obx_start_timer(&p_scb->ll_cb.comm);
         GKI_freebuf(p_pkt);
     }
-    OBEX_TRACE_DEBUG1("obx_sa_srm_put_rsp srm:0x%x", p_scb->srm);
+    OBEX_TRACE_DEBUG1("obx_sa_srm_put_rsp srm:0x%x\n", p_scb->srm);
 
     while (ret && (p_pkt = (BT_HDR *)GKI_dequeue (&p_comm->rx_q)) != NULL)
     {
@@ -1432,7 +1432,7 @@ tOBEX_SR_STATE obx_sa_srm_put_rsp(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
         if ((p_scb->srm & OBEX_SRM_ABORT) == 0)
             ret = FALSE;
         obx_flow_control(p_comm);
-        OBEX_TRACE_DEBUG3("obx_sa_srm_put_rsp rx_q.count: %d srm:0x%x, ret:%d", p_comm->rx_q.count, p_scb->srm, ret );
+        OBEX_TRACE_DEBUG3("obx_sa_srm_put_rsp rx_q.count: %d srm:0x%x, ret:%d\n", p_comm->rx_q.count, p_scb->srm, ret );
     }
 
     return state;
@@ -1448,7 +1448,7 @@ tOBEX_SR_STATE obx_sa_srm_get_fcs(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
     BOOLEAN         not_cong = TRUE;
     if (p_scb->ll_cb.comm.p_send_fn == (tOBEX_SEND_FN *)obx_l2c_snd_msg)
     {
-        OBEX_TRACE_DEBUG1("obx_sa_srm_get_fcs cong:%d", p_scb->ll_cb.l2c.cong);
+        OBEX_TRACE_DEBUG1("obx_sa_srm_get_fcs cong:%d\n", p_scb->ll_cb.l2c.cong);
         if (p_scb->ll_cb.l2c.cong)
             not_cong = FALSE;
     }
@@ -1465,7 +1465,7 @@ tOBEX_SR_STATE obx_sa_srm_get_fcs(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
 tOBEX_SR_STATE obx_sa_srm_get_rsp(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
 {
     tOBEX_SR_STATE   state;
-    OBEX_TRACE_DEBUG1("obx_sa_srm_get_rsp srm:0x%x", p_scb->srm);
+    OBEX_TRACE_DEBUG1("obx_sa_srm_get_rsp srm:0x%x\n", p_scb->srm);
     state = obx_sa_snd_rsp(p_scb, p_pkt);
     return state;
 }
@@ -1481,7 +1481,7 @@ tOBEX_SR_STATE obx_sa_srm_get_req(tOBEX_SR_SESS_CB *p_scb, BT_HDR *p_pkt)
     tOBEX_SR_STATE   state = OBEX_SS_NULL;
     tOBEX_SR_CB      *p_cb;
 
-    OBEX_TRACE_DEBUG3("obx_sa_srm_get_req srm:0x%x srmp:0x%x final:%d", p_scb->srm, p_scb->srmp, p_scb->param.get.final);
+    OBEX_TRACE_DEBUG3("obx_sa_srm_get_req srm:0x%x srmp:0x%x final:%d\n", p_scb->srm, p_scb->srmp, p_scb->param.get.final);
     if (p_scb->srmp & OBEX_SRMP_NONF)
     {
         /* the GET request does not set the final bit yet.

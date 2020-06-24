@@ -1,5 +1,5 @@
 /*
- * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2016-2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -78,7 +78,7 @@ uint8_t * wiced_bt_obex_header_init(wiced_bt_obex_handle_t handle, uint16_t pkt_
         pkt_size = mtu;
     pkt_size    += (BT_HDR_SIZE + OBEX_HDR_OFFSET);
 
-    OBEX_TRACE_DEBUG4( "OBEX_HdrInit: checking req_size %d, pkt_size:%d, max:%d, offset:%d",
+    OBEX_TRACE_DEBUG4( "OBEX_HdrInit: checking req_size %d, pkt_size:%d, max:%d, offset:%d\n",
         req_size, pkt_size, GKI_MAX_BUF_SIZE, OBEX_HDR_OFFSET);
     p_pkt = (BT_HDR *) GKI_getbuf(pkt_size);
 
@@ -89,7 +89,7 @@ uint8_t * wiced_bt_obex_header_init(wiced_bt_obex_handle_t handle, uint16_t pkt_
         if(buf_size > mtu)
             buf_size = mtu;
 
-        OBEX_TRACE_DEBUG4( "OBEX_HdrInit: req_size %d, pkt_size = %d, gki_size %d, buf_size %d",
+        OBEX_TRACE_DEBUG4( "OBEX_HdrInit: req_size %d, pkt_size = %d, gki_size %d, buf_size %d\n",
                             req_size, pkt_size, GKI_get_buf_size(p_pkt), buf_size);
 
         p_pkt->offset   = OBEX_HDR_OFFSET;
@@ -100,11 +100,11 @@ uint8_t * wiced_bt_obex_header_init(wiced_bt_obex_handle_t handle, uint16_t pkt_
         p_pkt->layer_specific = buf_size - OBEX_HDR_OFFSET ;
         p_pkt->layer_specific -= 2;
 
-        OBEX_TRACE_DEBUG2( "buf size: %d, ls:%d", buf_size, p_pkt->layer_specific);
+        OBEX_TRACE_DEBUG2( "buf size: %d, ls:%d\n", buf_size, p_pkt->layer_specific);
     }
     else
     {
-        OBEX_TRACE_ERROR1("OBEX_HdrInit: No buffers for size (%d)", pkt_size);
+        OBEX_TRACE_ERROR1("OBEX_HdrInit: No buffers for size (%d)\n", pkt_size);
     }
 
     return (uint8_t *)p_pkt;
@@ -584,7 +584,7 @@ UINT16 obx_read_header_len(UINT8 *ph)
     UINT16  len = 0;
 
     /*
-    OBEX_TRACE_DEBUG1( "obx_read_header_len: 0x%x", *ph);
+    OBEX_TRACE_DEBUG1( "obx_read_header_len: 0x%x\n", *ph);
     */
     switch(*ph&OBEX_HI_TYPE_MASK)
     {
@@ -601,7 +601,7 @@ UINT16 obx_read_header_len(UINT8 *ph)
         break;
     }
     /*
-    OBEX_TRACE_DEBUG1( "len:%d", len);
+    OBEX_TRACE_DEBUG1( "len:%d\n", len);
     */
     return len;
 }
@@ -786,7 +786,7 @@ BOOLEAN OBEX_AddUnicodeHdr(BT_HDR *p_pkt, UINT8 id, UINT16 *p_data, UINT16 len)
     {
         p = (UINT8 *)(p_pkt+1)+p_pkt->offset+p_pkt->len;
         size = (len*OBEX_UNICODE_SIZE + 3); /* total length added by this header - 1/hi & len*OBEX_UNICODE_SIZE+2/hv */
-        OBEX_TRACE_DEBUG4( "OBEX_AddUnicodeHdr len: %d, size: %d, left: %d, id: 0x%x",
+        OBEX_TRACE_DEBUG4( "OBEX_AddUnicodeHdr len: %d, size: %d, left: %d, id: 0x%x\n",
             len, size, p_pkt->layer_specific, id );
 
         /* verify that the HI is of correct type and the remaining length in the packet is good */
@@ -954,7 +954,7 @@ UINT8 * OBEX_CheckNext(BT_HDR *p_pkt, UINT8 *p_start, UINT8 id)
 
     if (p_pkt)
     {
-        OBEX_TRACE_DEBUG2( "OBEX_CheckNext: remain: %d len:%d", remain, p_pkt->len);
+        OBEX_TRACE_DEBUG2( "OBEX_CheckNext: remain: %d len:%d\n", remain, p_pkt->len);
     }
 
     return p_res;
@@ -1267,7 +1267,7 @@ BOOLEAN OBEX_ReadTriplet(BT_HDR *p_pkt, UINT8 id, tOBEX_TRIPLET *p_triplet, UINT
         {
             p_triplet[count].tag = *p_start++;
             p_triplet[count].len = *p_start++;
-            OBEX_TRACE_DEBUG3( "OBEX_ReadTriplet: count: %d, tag: %x, len: %d",
+            OBEX_TRACE_DEBUG3( "OBEX_ReadTriplet: count: %d, tag: %x, len: %d\n",
                 count, p_triplet[count].tag, p_triplet[count].len);
             p_triplet[count].p_array = p_start;
             p_start += p_triplet[count].len;

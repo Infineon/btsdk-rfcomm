@@ -1,5 +1,5 @@
 /*
- * Copyright 2020, Cypress Semiconductor Corporation or a subsidiary of
+ * Copyright 2016-2020, Cypress Semiconductor Corporation or a subsidiary of
  * Cypress Semiconductor Corporation. All Rights Reserved.
  *
  * This software, including source code, documentation and related
@@ -99,7 +99,7 @@ BT_HDR * obx_ca_close_sess_req(tOBEX_CL_CB *p_cb)
     UINT16_TO_BE_STREAM(p, p_req->len);
     p_req->event    = OBEX_SESSION_REQ_EVT;
     p_cb->sess_st   = OBEX_SESS_CLOSE;
-    OBEX_TRACE_DEBUG2("obx_ca_close_sess_req shandle:0x%x, sess_st:%d", p_cb->ll_cb.comm.handle, p_cb->sess_st);
+    OBEX_TRACE_DEBUG2("obx_ca_close_sess_req shandle:0x%x, sess_st:%d\n", p_cb->ll_cb.comm.handle, p_cb->sess_st);
     return p_req;
 }
 
@@ -212,7 +212,7 @@ tOBEX_CL_STATE obx_ca_session_ok(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
     tOBEX_EVT_PARAM  param;              /* The event parameter. */
     UINT8           dropped = 0;
 
-    OBEX_TRACE_DEBUG4("obx_ca_session_ok sess_st: %d ssn:%d obj_offset:%d prev_state:%d", p_cb->sess_st, p_cb->ssn, obj_offset, p_cb->prev_state);
+    OBEX_TRACE_DEBUG4("obx_ca_session_ok sess_st: %d ssn:%d obj_offset:%d prev_state:%d\n", p_cb->sess_st, p_cb->ssn, obj_offset, p_cb->prev_state);
     OBEX_ReadTriplet(p_pkt, OBEX_HI_SESSION_PARAM, triplet, &num);
     obx_read_timeout (triplet, num, &timeout, &p_cb->sess_info[OBEX_SESSION_INFO_TO_IDX]);
     p_cb->param.sess.timeout = timeout;
@@ -224,7 +224,7 @@ tOBEX_CL_STATE obx_ca_session_ok(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
         nssn            = p_cb->ssn;
         /* send a tx_empty event to close port */
         sm_evt  = OBEX_TX_EMPTY_CEVT;
-        OBEX_TRACE_DEBUG2("suspend saved st:%d, srm:0x%x", p_cb->sess_info[OBEX_SESSION_INFO_ST_IDX], p_cb->sess_info[OBEX_SESSION_INFO_SRM_IDX]);
+        OBEX_TRACE_DEBUG2("suspend saved st:%d, srm:0x%x\n", p_cb->sess_info[OBEX_SESSION_INFO_ST_IDX], p_cb->sess_info[OBEX_SESSION_INFO_SRM_IDX]);
     }
     else if (p_cb->sess_st == OBEX_SESS_CLOSE)
     {
@@ -259,7 +259,7 @@ tOBEX_CL_STATE obx_ca_session_ok(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
 
             if (p_nonce && p_addr && p_sess_id)
             {
-                OBEX_TRACE_DEBUG0("verify session id");
+                OBEX_TRACE_DEBUG0("verify session id\n");
                 wiced_bt_dev_read_local_addr (cl_addr);
                 p_cl_nonce = &p_cb->sess_info[OBEX_SESSION_ID_SIZE];
                 p = p_cl_nonce;
@@ -275,7 +275,7 @@ tOBEX_CL_STATE obx_ca_session_ok(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
                     p_cb->ssn       = 0;
                     /* do we want a timer here */
                     status = OBEX_SUCCESS;
-                    OBEX_TRACE_DEBUG0("freeing received packet");
+                    OBEX_TRACE_DEBUG0("freeing received packet\n");
                     GKI_freebuf (p_pkt) ;
                     p_pkt  = p_cb->p_next_req;
                     p_cb->p_next_req = NULL;
@@ -298,7 +298,7 @@ tOBEX_CL_STATE obx_ca_session_ok(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
             ind = obx_read_triplet(triplet, num, OBEX_TAG_SESS_PARAM_NSEQNUM);
             if ((ind == num) || (triplet[ind].len != 1))
             {
-                OBEX_TRACE_ERROR0("RESUME:do not have valid NSSN tag");
+                OBEX_TRACE_ERROR0("RESUME:do not have valid NSSN tag\n");
                 break;
             }
 
@@ -307,7 +307,7 @@ tOBEX_CL_STATE obx_ca_session_ok(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
             if ((p_cb->sess_info[OBEX_SESSION_INFO_SRM_IDX] & OBEX_SRM_ENGAGE) != 0)
             {
                 obj_offset = obx_read_obj_offset(triplet, num);
-                OBEX_TRACE_DEBUG2("RESUME:SRM is engaged and object offset:0x%x (0x%x)",
+                OBEX_TRACE_DEBUG2("RESUME:SRM is engaged and object offset:0x%x (0x%x)\n",
                     obj_offset, p_cb->param.sess.obj_offset);
 
                 /* client always takes the offset and ssn from the response since adjustment was done at server side */
@@ -318,33 +318,33 @@ tOBEX_CL_STATE obx_ca_session_ok(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
             /* otherwise make sure NSSN from server is OK */
             else if (nssn == p_cb->ssn)
             {
-                OBEX_TRACE_DEBUG0("RESUME:nssn matches expected ssn");
+                OBEX_TRACE_DEBUG0("RESUME:nssn matches expected ssn\n");
                 status = OBEX_SUCCESS;
             }
             else if (dropped != 0)
             {
-                OBEX_TRACE_DEBUG2("RESUME:link drop suspend nssn:%d cb ssn:%d", nssn, p_cb->ssn);
+                OBEX_TRACE_DEBUG2("RESUME:link drop suspend nssn:%d cb ssn:%d\n", nssn, p_cb->ssn);
                 if ((UINT8)(nssn+1) == p_cb->ssn)
                 {
-                    OBEX_TRACE_DEBUG0("RESUME:nssn matches expected(ssn-1)");
+                    OBEX_TRACE_DEBUG0("RESUME:nssn matches expected(ssn-1)\n");
                     p_cb->ssn -= 1;
                     status = OBEX_SUCCESS;
                 }
                 else if (nssn == (UINT8)(p_cb->ssn+1))
                 {
-                    OBEX_TRACE_DEBUG0("RESUME:nssn matches expected(ssn+1)");
+                    OBEX_TRACE_DEBUG0("RESUME:nssn matches expected(ssn+1)\n");
                     nssn -= 1;
                     status = OBEX_SUCCESS;
                 }
             }
             else
             {
-                OBEX_TRACE_ERROR2("RESUME:bad NSSN:%d (%d)", nssn, p_cb->ssn);
+                OBEX_TRACE_ERROR2("RESUME:bad NSSN:%d (%d)\n", nssn, p_cb->ssn);
                 break;
             }
             p_cb->sess_st   = OBEX_SESS_ACTIVE;
             sess_op         = OBEX_SESS_OP_RESUME;
-            OBEX_TRACE_DEBUG2("RESUME:info new_state:0x%x, srm:0x%x", p_cb->sess_info[OBEX_SESSION_INFO_ST_IDX], p_cb->sess_info[OBEX_SESSION_INFO_SRM_IDX]);
+            OBEX_TRACE_DEBUG2("RESUME:info new_state:0x%x, srm:0x%x\n", p_cb->sess_info[OBEX_SESSION_INFO_ST_IDX], p_cb->sess_info[OBEX_SESSION_INFO_SRM_IDX]);
             p_cb->srm = p_cb->sess_info[OBEX_SESSION_INFO_SRM_IDX];
             p_cb->sess_info[OBEX_SESSION_INFO_ST_IDX] &= ~OBEX_CL_STATE_DROP;
             if (p_cb->srm & OBEX_SRM_ENGAGE)
@@ -362,7 +362,7 @@ tOBEX_CL_STATE obx_ca_session_ok(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
                 new_state    = OBEX_CS_CONNECTED;
                 p_cb->srmp  |= OBEX_SRMP_SESS_FST;
             }
-            OBEX_TRACE_DEBUG2("RESUME:new_state:%d, srm:0x%x", new_state, p_cb->srm);
+            OBEX_TRACE_DEBUG2("RESUME:new_state:%d, srm:0x%x\n", new_state, p_cb->srm);
             break;
 
         default:
@@ -373,7 +373,7 @@ tOBEX_CL_STATE obx_ca_session_ok(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
     {
         status = OBEX_BAD_PARAMS;
     }
-    OBEX_TRACE_DEBUG5("obx_ca_session_ok prev:%d, sess_st:%d->%d obj_offset:%d status:%d", p_cb->prev_state, old_sess_st, p_cb->sess_st, obj_offset, status);
+    OBEX_TRACE_DEBUG5("obx_ca_session_ok prev:%d, sess_st:%d->%d obj_offset:%d status:%d\n", p_cb->prev_state, old_sess_st, p_cb->sess_st, obj_offset, status);
 
     if (sess_op == OBEX_SESS_OP_SET_TIME)
         new_state = p_cb->prev_state;
@@ -402,7 +402,7 @@ tOBEX_CL_STATE obx_ca_session_ok(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
         BE_STREAM_TO_UINT16(param.conn.mtu, p);
         p_cb->ll_cb.comm.tx_mtu = param.conn.mtu;
         param.conn.handle = p_cb->ll_cb.comm.handle;
-        OBEX_TRACE_DEBUG1("RESUME: tx_mtu: %d", p_cb->ll_cb.comm.tx_mtu);
+        OBEX_TRACE_DEBUG1("RESUME: tx_mtu: %d\n", p_cb->ll_cb.comm.tx_mtu);
         /* report OBEX_CONNECT_RSP_EVT to let the client know the MTU */
         (*p_cb->p_cback)(p_cb->ll_cb.comm.handle, OBEX_CONNECT_RSP_EVT, OBEX_RSP_OK, param, NULL);
         sm_evt = OBEX_STATE_CEVT;
@@ -426,7 +426,7 @@ tOBEX_CL_STATE obx_ca_session_cont(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
 {
     BOOLEAN free = TRUE;
 
-    OBEX_TRACE_DEBUG3("obx_ca_session_cont sess_st:%d prev_state:%d, srm:0x%x", p_cb->sess_st, p_cb->prev_state, p_cb->srm);
+    OBEX_TRACE_DEBUG3("obx_ca_session_cont sess_st:%d prev_state:%d, srm:0x%x\n", p_cb->sess_st, p_cb->prev_state, p_cb->srm);
     if (p_cb->sess_st == OBEX_SESS_SUSPEND)
     {
         if (p_cb->prev_state == OBEX_CS_GET_SRM)
@@ -439,7 +439,7 @@ tOBEX_CL_STATE obx_ca_session_cont(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
             else
             {
                 GKI_enqueue_head  (&p_cb->ll_cb.comm.rx_q, p_pkt);
-                OBEX_TRACE_DEBUG1("obx_ca_session_cont rx_q.count:%d", p_cb->ll_cb.comm.rx_q.count);
+                OBEX_TRACE_DEBUG1("obx_ca_session_cont rx_q.count:%d\n", p_cb->ll_cb.comm.rx_q.count);
             }
             free = FALSE;
         }
@@ -452,7 +452,7 @@ tOBEX_CL_STATE obx_ca_session_cont(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
     }
     if (free && p_pkt)
         GKI_freebuf(p_pkt);
-    OBEX_TRACE_DEBUG1("obx_ca_session_cont srm: 0x%x(e)", p_cb->srm );
+    OBEX_TRACE_DEBUG1("obx_ca_session_cont srm: 0x%x(e)\n", p_cb->srm );
     return OBEX_CS_NULL;
 }
 
@@ -463,7 +463,7 @@ tOBEX_CL_STATE obx_ca_session_cont(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
 *******************************************************************************/
 tOBEX_CL_STATE obx_ca_session_get(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
 {
-    OBEX_TRACE_DEBUG3("obx_ca_session_get sess_st:%d prev_state: %d, srm:0x%x", p_cb->sess_st, p_cb->prev_state, p_cb->srm );
+    OBEX_TRACE_DEBUG3("obx_ca_session_get sess_st:%d prev_state: %d, srm:0x%x\n", p_cb->sess_st, p_cb->prev_state, p_cb->srm );
     if (p_cb->sess_st == OBEX_SESS_SUSPEND && p_cb->prev_state == OBEX_CS_GET_SRM)
         return obx_ca_srm_get_req(p_cb, p_pkt);
     return OBEX_CS_NULL;
@@ -478,13 +478,13 @@ tOBEX_CL_STATE obx_ca_session_fail(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
     tOBEX_SESS_ST    old_sess_st = p_cb->sess_st;
 
     p_cb->sess_st = OBEX_SESS_NONE;
-    OBEX_TRACE_DEBUG2("obx_ca_session_fail, sess_st:%d->%d", old_sess_st, p_cb->sess_st);
+    OBEX_TRACE_DEBUG2("obx_ca_session_fail, sess_st:%d->%d\n", old_sess_st, p_cb->sess_st);
     if (old_sess_st == OBEX_SESS_CREATE && p_cb->rsp_code != OBEX_RSP_OK)
     {
         /* peer device does not support session. Continue with regular session */
         /* report session failure */
         (*p_cb->p_cback)(p_cb->ll_cb.comm.handle, OBEX_SESSION_RSP_EVT, p_cb->rsp_code, p_cb->param, NULL);
-        OBEX_TRACE_DEBUG0("freeing received packet");
+        OBEX_TRACE_DEBUG0("freeing received packet\n");
         if (p_pkt)
             GKI_freebuf (p_pkt) ;
         p_pkt  = p_cb->p_next_req;
@@ -505,7 +505,7 @@ tOBEX_CL_STATE obx_ca_session_fail(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
 *******************************************************************************/
 tOBEX_CL_STATE obx_ca_abort(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
 {
-    OBEX_TRACE_DEBUG2("obx_ca_abort srm:0x%x srmp:0x%x", p_cb->srm, p_cb->srmp);
+    OBEX_TRACE_DEBUG2("obx_ca_abort srm:0x%x srmp:0x%x\n", p_cb->srm, p_cb->srmp);
 
     if ( p_cb->srmp & OBEX_SRMP_SESS_FST)
     {
@@ -532,7 +532,7 @@ tOBEX_CL_STATE obx_ca_snd_put_req(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
 {
     tOBEX_SR_STATE state = OBEX_CS_NULL;
 
-    OBEX_TRACE_DEBUG1("obx_ca_snd_put_req, srm:0x%x", p_cb->srm);
+    OBEX_TRACE_DEBUG1("obx_ca_snd_put_req, srm:0x%x\n", p_cb->srm);
     state = obx_ca_snd_req (p_cb, p_pkt);
     if (p_cb->srm & OBEX_SRM_ENGAGE)
     {
@@ -564,9 +564,9 @@ tOBEX_CL_STATE obx_ca_snd_get_req(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
 {
     tOBEX_SR_STATE state;
 
-    OBEX_TRACE_DEBUG1("obx_ca_snd_get_req srm:0x%x", p_cb->srm );
+    OBEX_TRACE_DEBUG1("obx_ca_snd_get_req srm:0x%x\n", p_cb->srm );
     state = obx_ca_snd_req (p_cb, p_pkt);
-    OBEX_TRACE_DEBUG1("srm:0x%x", p_cb->srm );
+    OBEX_TRACE_DEBUG1("srm:0x%x\n", p_cb->srm );
     if (p_cb->srm & OBEX_SRM_ENABLE)
     {
         if (state == OBEX_CS_PARTIAL_SENT)
@@ -577,7 +577,7 @@ tOBEX_CL_STATE obx_ca_snd_get_req(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
             state = OBEX_CS_GET_SRM;
         p_cb->srm &= ~OBEX_SRM_WAIT_UL;
     }
-    OBEX_TRACE_DEBUG1("srm:0x%x", p_cb->srm );
+    OBEX_TRACE_DEBUG1("srm:0x%x\n", p_cb->srm );
     return state;
 }
 
@@ -590,14 +590,14 @@ tOBEX_CL_STATE obx_ca_srm_snd_req(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
     tOBEX_SR_STATE   state;
     tOBEX_COMM_CB    *p_comm = &p_cb->ll_cb.comm;
 
-    OBEX_TRACE_DEBUG2("obx_ca_srm_snd_req rx_q.count: %d, srm:0x%x", p_comm->rx_q.count, p_cb->srm );
+    OBEX_TRACE_DEBUG2("obx_ca_srm_snd_req rx_q.count: %d, srm:0x%x\n", p_comm->rx_q.count, p_cb->srm );
     p_cb->srm &= ~OBEX_SRM_WAIT_UL;
     state = obx_ca_snd_req (p_cb, p_pkt);
     if ((p_pkt = (BT_HDR *)GKI_dequeue (&p_comm->rx_q)) != NULL)
     {
         GKI_freebuf(p_pkt);
     }
-    OBEX_TRACE_DEBUG2("                   rx_q.count: %d, srm:0x%x", p_comm->rx_q.count, p_cb->srm );
+    OBEX_TRACE_DEBUG2("                   rx_q.count: %d, srm:0x%x\n", p_comm->rx_q.count, p_cb->srm );
     return state;
 }
 
@@ -609,9 +609,9 @@ tOBEX_CL_STATE obx_ca_srm_put_req(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
 {
     tOBEX_SR_STATE   state;
 
-    OBEX_TRACE_DEBUG1("obx_ca_srm_put_req srm:0x%x", p_cb->srm );
+    OBEX_TRACE_DEBUG1("obx_ca_srm_put_req srm:0x%x\n", p_cb->srm );
     state = obx_ca_snd_req (p_cb, p_pkt);
-    OBEX_TRACE_DEBUG4("obx_ca_srm_put_req state:%d srm:0x%x, final:%d rsp_code:0x%x", state, p_cb->srm, p_cb->final, p_cb->rsp_code );
+    OBEX_TRACE_DEBUG4("obx_ca_srm_put_req state:%d srm:0x%x, final:%d rsp_code:0x%x\n", state, p_cb->srm, p_cb->final, p_cb->rsp_code );
     if (state != OBEX_CS_PARTIAL_SENT && p_cb->final != TRUE && (p_cb->srm & OBEX_SRM_WAIT) == 0)
     {
         p_cb->rsp_code = OBEX_RSP_CONTINUE;
@@ -635,7 +635,7 @@ static void obx_resend_get_req_msg(tOBEX_HANDLE handle)
     UINT8       *p = msg;
     BT_HDR      *p_pkt;
 
-    OBEX_TRACE_DEBUG1("obx_resend_get_req_msg (hdl %x)", handle);
+    OBEX_TRACE_DEBUG1("obx_resend_get_req_msg (hdl %x)\n", handle);
 
     if (p_cb)
     {
@@ -664,7 +664,7 @@ static void obx_resend_get_req_msg(tOBEX_HANDLE handle)
     }
     else
     {
-        OBEX_TRACE_ERROR1("obx_resend_get_req_msg (hdl %x): Error getting buffer to resend", handle);
+        OBEX_TRACE_ERROR1("obx_resend_get_req_msg (hdl %x): Error getting buffer to resend\n", handle);
     }
 }
 
@@ -677,7 +677,7 @@ tOBEX_CL_STATE obx_ca_srm_get_req(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
 {
     tOBEX_COMM_CB    *p_comm = &p_cb->ll_cb.comm;
 
-    OBEX_TRACE_DEBUG3("obx_ca_srm_get_req sess_st: %d, rx_q.count: %d, srm:0x%x", p_cb->sess_st, p_comm->rx_q.count, p_cb->srm );
+    OBEX_TRACE_DEBUG3("obx_ca_srm_get_req sess_st: %d, rx_q.count: %d, srm:0x%x\n", p_cb->sess_st, p_comm->rx_q.count, p_cb->srm );
 
     obx_start_timer(&p_cb->ll_cb.comm);
     p_cb->srm &= ~OBEX_SRM_WAIT_UL;
@@ -693,9 +693,9 @@ tOBEX_CL_STATE obx_ca_srm_get_req(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
     {
         obx_cl_proc_pkt (p_cb, p_pkt);
         obx_flow_control(p_comm);
-        OBEX_TRACE_DEBUG1("obx_ca_srm_get_req rx_q.count: %d", p_cb->ll_cb.comm.rx_q.count );
+        OBEX_TRACE_DEBUG1("obx_ca_srm_get_req rx_q.count: %d\n", p_cb->ll_cb.comm.rx_q.count );
     }
-    OBEX_TRACE_DEBUG1("obx_ca_srm_get_req srm:0x%x", p_cb->srm );
+    OBEX_TRACE_DEBUG1("obx_ca_srm_get_req srm:0x%x\n", p_cb->srm );
 
     return OBEX_CS_NULL;
 }
@@ -708,7 +708,7 @@ tOBEX_CL_STATE obx_ca_srm_put_notify(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
 {
     tOBEX_SR_STATE   state;
 
-    OBEX_TRACE_DEBUG2("obx_ca_srm_put_notify srm: 0x%x, srmp: 0x%x", p_cb->srm, p_cb->srmp );
+    OBEX_TRACE_DEBUG2("obx_ca_srm_put_notify srm: 0x%x, srmp: 0x%x\n", p_cb->srm, p_cb->srmp );
 
     state = obx_ca_notify (p_cb, p_pkt);
     return state;
@@ -722,7 +722,7 @@ tOBEX_CL_STATE obx_ca_srm_get_notify(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
 {
     tOBEX_SR_STATE   state = OBEX_CS_NULL;
 
-    OBEX_TRACE_DEBUG1("obx_ca_srm_get_notify srm: 0x%x", p_cb->srm );
+    OBEX_TRACE_DEBUG1("obx_ca_srm_get_notify srm: 0x%x\n", p_cb->srm );
     /* do not allow SRMP for now */
     p_cb->srm &= ~OBEX_SRM_WAIT;
 
@@ -737,7 +737,7 @@ tOBEX_CL_STATE obx_ca_srm_get_notify(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
 #ifdef OBEX_LIB_L2CAP_INCLUDED
                 if ((OBEX_CheckHdr(p_pkt, OBEX_HI_BODY_END) == NULL))
                 {
-                    OBEX_TRACE_DEBUG1("obx_ca_srm_get_notify - Resending Get Request (SRMP=1), hdl %x", p_cb->ll_cb.l2c.handle);
+                    OBEX_TRACE_DEBUG1("obx_ca_srm_get_notify - Resending Get Request (SRMP=1), hdl %x\n", p_cb->ll_cb.l2c.handle);
                     obx_resend_get_req_msg(p_cb->ll_cb.l2c.handle);
                     state = OBEX_CS_GET_SRM;
                 }
@@ -751,7 +751,7 @@ tOBEX_CL_STATE obx_ca_srm_get_notify(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
         else
         {
             GKI_enqueue_head  (&p_cb->ll_cb.comm.rx_q, p_pkt);
-            OBEX_TRACE_DEBUG1("obx_ca_srm_get_notify rx_q.count:%d", p_cb->ll_cb.comm.rx_q.count);
+            OBEX_TRACE_DEBUG1("obx_ca_srm_get_notify rx_q.count:%d\n", p_cb->ll_cb.comm.rx_q.count);
         }
     }
     else
@@ -760,7 +760,7 @@ tOBEX_CL_STATE obx_ca_srm_get_notify(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
         if (state == OBEX_CS_GET_SRM || state == OBEX_CS_NULL)
             state = OBEX_CS_GET_TRANSACTION;
     }
-    OBEX_TRACE_DEBUG2("obx_ca_srm_get_notify srm: 0x%x(e) state:%s", p_cb->srm, obx_sr_get_state_name(state) );
+    OBEX_TRACE_DEBUG2("obx_ca_srm_get_notify srm: 0x%x(e) state:%s\n", p_cb->srm, obx_sr_get_state_name(state) );
     return state;
 }
 
@@ -786,7 +786,7 @@ tOBEX_CL_STATE obx_ca_save_req(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
         /* this action only occurs when we are flow controlled by the peer
          * and the client wants to abort the operation */
         /* Just in case that the user keeps calling abort request.... */
-        OBEX_TRACE_WARNING1("free next req: 0x%x", p_cb->p_next_req );
+        OBEX_TRACE_WARNING1("free next req: 0x%x\n", p_cb->p_next_req );
         GKI_freebuf(p_cb->p_next_req);
     }
 
@@ -811,7 +811,7 @@ tOBEX_CL_STATE obx_ca_snd_req(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
 
     obx_access_rsp_code(p_pkt, &rsp_code);
     p_cb->final = (rsp_code&OBEX_FINAL) ? TRUE : FALSE;
-    OBEX_TRACE_DEBUG2("obx_ca_snd_req rsp_code: 0x%x final:%d", rsp_code, p_cb->final );
+    OBEX_TRACE_DEBUG2("obx_ca_snd_req rsp_code: 0x%x final:%d\n", rsp_code, p_cb->final );
 
     /* save a copy of the request sent to the server */
     if (p_cb->p_saved_req)
@@ -819,14 +819,14 @@ tOBEX_CL_STATE obx_ca_snd_req(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
 
     p_cb->p_saved_req   = obx_dup_pkt(p_pkt);
 
-    OBEX_TRACE_DEBUG3( "event p_saved_req:%d, pkt:%d, final: %d", p_cb->p_saved_req->event, p_pkt->event,p_cb->final);
+    OBEX_TRACE_DEBUG3( "event p_saved_req:%d, pkt:%d, final: %d\n", p_cb->p_saved_req->event, p_pkt->event,p_cb->final);
 
     /* If Abort req is being sent, need to flush rx_q to prevent congestion */
     if (rsp_code == (OBEX_REQ_ABORT | OBEX_FINAL))
     {
         if (!GKI_queue_is_empty(&p_comm->rx_q))
         {
-            OBEX_TRACE_DEBUG0("obx_ca_snd_req abort free rx_q");
+            OBEX_TRACE_DEBUG0("obx_ca_snd_req abort free rx_q\n");
             while((p_buf = (BT_HDR*)GKI_dequeue (&p_comm->rx_q)) != NULL)
                 GKI_freebuf(p_buf);
         }
@@ -877,7 +877,7 @@ tOBEX_CL_STATE obx_ca_snd_part(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
 {
     tOBEX_CL_STATE state = OBEX_CS_NULL;
 
-    OBEX_TRACE_DEBUG1("obx_ca_snd_part sess_st:%d", p_cb->sess_st);
+    OBEX_TRACE_DEBUG1("obx_ca_snd_part sess_st:%d\n", p_cb->sess_st);
 
     /* p_pkt should be NULL here */
     if (p_cb->ll_cb.comm.p_send_fn(&p_cb->ll_cb) == TRUE)
@@ -892,7 +892,7 @@ tOBEX_CL_STATE obx_ca_snd_part(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
             obx_csm_event(p_cb, (tOBEX_CL_EVENT)(p_pkt->event-1), p_pkt);
         }
 
-        OBEX_TRACE_DEBUG2("obx_ca_snd_part state:%d, srm:0x%x", p_cb->state, p_cb->srm);
+        OBEX_TRACE_DEBUG2("obx_ca_snd_part state:%d, srm:0x%x\n", p_cb->state, p_cb->srm);
         if ((p_pkt = (BT_HDR *)GKI_dequeue (&p_cb->ll_cb.comm.rx_q)) != NULL)
         {
             obx_cl_proc_pkt (p_cb, p_pkt);
@@ -936,7 +936,7 @@ tOBEX_CL_STATE obx_ca_connect_error(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
         else if (save_state == OBEX_CS_GET_SRM)
             p_cb->srm &= ~OBEX_SRM_WAIT_UL;
         p_cb->sess_info[OBEX_SESSION_INFO_ST_IDX] = save_state;
-        OBEX_TRACE_DEBUG2("obx_ca_connect_error saved state:0x%x, srm:0x%x", save_state, p_cb->srm);
+        OBEX_TRACE_DEBUG2("obx_ca_connect_error saved state:0x%x, srm:0x%x\n", save_state, p_cb->srm);
         p_cb->sess_info[OBEX_SESSION_INFO_SRM_IDX] = p_cb->srm;
         param.sess.p_sess_info   = p_cb->sess_info;
         param.sess.sess_op       = OBEX_SESS_OP_TRANSPORT;
@@ -1007,15 +1007,15 @@ tOBEX_CL_STATE obx_ca_notify(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
     tOBEX_CL_EVENT   sm_evt = OBEX_BAD_SM_EVT;
     BT_HDR          *p_req = NULL;
 
-    OBEX_TRACE_DEBUG6( "obx_ca_notify state: %s, prev_state: %s, rsp:0x%x, sess_st:%d, event:%d srm:0x%x",
+    OBEX_TRACE_DEBUG6( "obx_ca_notify state: %s, prev_state: %s, rsp:0x%x, sess_st:%d, event:%d srm:0x%x\n",
         obx_cl_get_state_name( p_cb->state ), obx_cl_get_state_name(p_cb->prev_state), p_cb->rsp_code, p_cb->sess_st, event, p_cb->srm);
-    OBEX_TRACE_DEBUG2( "ssn:0x%x/0x%x", p_cb->ssn, p_cb->param.ssn);
+    OBEX_TRACE_DEBUG2( "ssn:0x%x/0x%x\n", p_cb->ssn, p_cb->param.ssn);
 
     if ( (p_cb->final == TRUE && p_cb->rsp_code == OBEX_RSP_CONTINUE && p_cb->state == OBEX_CS_PUT_TRANSACTION) ||
         (p_cb->final == FALSE && p_cb->rsp_code != OBEX_RSP_CONTINUE) )
     {
         /* final bit on the request mismatch the responde code --- Error!! */
-        OBEX_TRACE_ERROR2( "final:%d on the request mismatch the responde code:0x%x",
+        OBEX_TRACE_ERROR2( "final:%d on the request mismatch the responde code:0x%x\n",
             p_cb->final, p_cb->rsp_code) ;
         /* change the state to not connected state */
         p_cb->next_state   = OBEX_CS_NOT_CONNECTED;
@@ -1052,7 +1052,7 @@ tOBEX_CL_STATE obx_ca_notify(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
                     }
                     else if (p_cb->state == OBEX_CS_PUT_SRM && p_pkt && (p_cb->srm & OBEX_SRM_WAIT) == 0)
                     {
-                        OBEX_TRACE_ERROR0 ("unexpected PUT response. disconnect now!!");
+                        OBEX_TRACE_ERROR0 ("unexpected PUT response. disconnect now!!\n");
                         notify = FALSE;
                         event   = OBEX_NULL_EVT;
                         obx_ca_close_port(p_cb, p_pkt);
@@ -1071,7 +1071,7 @@ tOBEX_CL_STATE obx_ca_notify(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
             {
                 /* dis-engage SRM */
                 p_cb->srm &= OBEX_SRM_ENABLE;
-                OBEX_TRACE_DEBUG1( "disengage srm:0x%x", p_cb->srm);
+                OBEX_TRACE_DEBUG1( "disengage srm:0x%x\n", p_cb->srm);
             }
             break;
 
@@ -1102,7 +1102,7 @@ tOBEX_CL_STATE obx_ca_notify(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
 
         case OBEX_CS_ABORT_REQ_SENT:
             p_cb->srm &= OBEX_SRM_ENABLE;
-            OBEX_TRACE_DEBUG1( "(ab) disengage srm:0x%x", p_cb->srm);
+            OBEX_TRACE_DEBUG1( "(ab) disengage srm:0x%x\n", p_cb->srm);
             break;
         }
     }
@@ -1127,7 +1127,7 @@ tOBEX_CL_STATE obx_ca_notify(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
     else
     {
         p_cb->ssn = p_cb->param.ssn;
-        OBEX_TRACE_DEBUG1( "ssn:0x%x", p_cb->ssn);
+        OBEX_TRACE_DEBUG1( "ssn:0x%x\n", p_cb->ssn);
     }
 
     return state;
