@@ -2,10 +2,10 @@
 
 ### Overview
 
-This repo contains RFCOMM libraries used in BTSDK2.0 and higher. The libraries included in this repo are:
+This repo contains RFCOMM libraries used in BTSDK 2.0 and higher. The libraries included in this repo are:
 
 * obex_lib<br/>
-    * Object Exchange library<br/>
+    * Object Exchange Protocol library<br/>
 
 
 * pbap_lib<br/>
@@ -22,5 +22,3 @@ This repo contains RFCOMM libraries used in BTSDK2.0 and higher. The libraries i
 
 * map_lib<br/>
     * Message Access Client Profile library<br/>
-
-

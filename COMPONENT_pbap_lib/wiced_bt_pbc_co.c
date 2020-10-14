@@ -46,7 +46,7 @@
 #include "wiced_bt_pbc_co.h"
 #include "wiced_bt_pbc_int.h"
 #include "string.h"
-#if ( defined(CYW20706A2) || defined(CYW20719B1) || defined(CYW20719B0) || defined(CYW20721B1) || defined(CYW20735B0) || defined(CYW43012C0) || defined (CYW20819A1) )
+#if ( defined(CYW20706A2) || defined(CYW20719B1) || defined(CYW20719B0) || defined(CYW20721B1) || defined(CYW20735B0) || defined(CYW43012C0) )
 #include "wiced_bt_app_common.h"
 #endif
 #include "wiced_bt_event.h"

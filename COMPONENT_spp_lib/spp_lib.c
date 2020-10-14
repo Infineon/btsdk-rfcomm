@@ -73,6 +73,10 @@ typedef enum
 // Session control block.  Currently support 1.
 spp_scb_t   spp_scb[SPP_MAX_CONNECTIONS];
 
+#if defined(CYW20819A1) || defined (CYW20820A1)
+wiced_port_status_t spp_port_status;
+#endif
+
 BD_ADDR     bd_addr_connected;
 
 static wiced_bt_uuid_t  spp_uuid =
@@ -667,5 +671,25 @@ static spp_scb_t* spp_lib_get_scb_pointer( spp_scb_index_type_t index, uint16_t 
 
 uint8_t wiced_bt_spp_port_purge(uint16_t handle, uint8_t purge_flags)
 {
-	return PORT_Purge(handle, purge_flags);
+    return PORT_Purge(handle, purge_flags);
 }
+
+#if defined(CYW20819A1) || defined (CYW20820A1)
+/*
+ * get the rfcomm peer_mtu
+ */
+uint16_t wiced_bt_spp_rfcomm_get_peer_mtu(uint16_t handle)
+{
+    memset(&spp_port_status, 0, sizeof(spp_port_status));
+
+    if (wiced_bt_rfcomm_port_get_queue_status (handle, &spp_port_status) == WICED_BT_RFCOMM_SUCCESS)
+    {
+        SPP_TRACE("handle:%d, flags:0x%x, in_queue_size:%d, out_queue_size:%d, mtu_size:%d\n",
+            handle, spp_port_status.flags, spp_port_status.in_queue_size, spp_port_status.out_queue_size, spp_port_status.mtu_size);
+
+        return spp_port_status.mtu_size;
+    }
+
+    return 0;
+}
+#endif

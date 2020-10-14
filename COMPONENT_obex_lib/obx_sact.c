@@ -706,17 +706,17 @@ BT_HDR * obx_merge_get_req(BT_HDR *p_pkt1, BT_HDR *p_pkt2)
     {
         /* the original p_pkt1 is too small.
          * Allocate a bigger GKI buffer, p_ret, and copy p_pkt1 into p_ret */
+#if GKI_MAX_BUF_SIZE < OBEX_LRG_DATA_POOL_SIZE
         if (need < GKI_MAX_BUF_SIZE)
         {
             /* Use the largest general pool to allow challenge tags appendage */
             p_ret = (BT_HDR *)GKI_getbuf(GKI_MAX_BUF_SIZE);
         }
-#if GKI_MAX_BUF_SIZE < OBEX_LRG_DATA_POOL_SIZE
         else
+#endif
         {
             p_ret = (BT_HDR *) GKI_getpoolbuf(OBEX_LRG_DATA_POOL_ID);
         }
-#endif
         if (p_ret != NULL)
         {
             memcpy (p_ret, p_pkt1, sizeof (BT_HDR));
