@@ -136,7 +136,7 @@ static void obx_read_mtu(BT_HDR *p_pkt, tOBEX_HANDLE handle, tOBEX_CONN_EVT  *p_
 *******************************************************************************/
 UINT8 obx_read_srm (tOBEX_SRM *p_srm, BOOLEAN is_client, BT_HDR *p_pkt)
 {
-    UINT8   srm, srmp = 0, ret_srmp=0;
+    UINT8   srm = 0, srmp = 0, ret_srmp=0;
     UINT8   old_srm = *p_srm;
     BOOLEAN allowed = FALSE, clear = TRUE;
 
@@ -1002,4 +1002,16 @@ uint16_t wiced_bt_obex_get_peer_addr(wiced_bt_obex_handle_t handle, wiced_bt_dev
     }
 
     return lcid;
+}
+
+wiced_bool_t wiced_bt_obex_send_pkt_allowed (wiced_bt_obex_handle_t handle)
+{
+    tOBEX_CL_CB  *p_cb = obx_cl_get_cb(handle);
+    if (p_cb && p_cb->srm)
+    {
+        if (p_cb->srm & OBEX_SRM_WAIT)
+            return WICED_FALSE;
+        return WICED_TRUE;
+    }
+    return WICED_TRUE;
 }

@@ -53,7 +53,7 @@
 #include "wiced_bt_obex.h"
 #include "wiced_bt_ops_co.h"
 #include "wiced_bt_utils.h"
-
+#include "obx_int.h"
 
 /*****************************************************************************
 **  Constants
@@ -119,7 +119,7 @@ void wiced_bt_ops_enable(wiced_bt_ops_cb_t *p_cb, wiced_bt_ops_api_enable_t *p_d
     /* allocate scn for opp */
     p_cb->scn = p_data->scn;
     p_cb->app_id = p_data->app_id;
-    p_cb->psm = L2CA_AllocatePSM();
+    p_cb->psm = WICED_BT_OPS_L2CAP_PSM; //L2CA_AllocatePSM();
 
     memset (&start_params, 0, sizeof(wiced_bt_obex_start_params_t));
     start_params.p_target = NULL;
@@ -134,6 +134,7 @@ void wiced_bt_ops_enable(wiced_bt_ops_cb_t *p_cb, wiced_bt_ops_api_enable_t *p_d
     start_params.realm_charset = 0x0;   /* OBX_RCS_ASCII */
     start_params.p_realm = NULL;
     start_params.realm_len = 0;
+    start_params.max_sessions = OBEX_MAX_SR_SESSION;
 
     if ((status = wiced_bt_obex_start_server (&start_params, &p_cb->obx_handle)) == OBEX_SUCCESS)
     {
@@ -160,7 +161,7 @@ void wiced_bt_ops_api_disable(wiced_bt_ops_cb_t *p_cb, wiced_bt_ops_data_t *p_da
     wiced_bt_ops_clean_getput(p_cb, TRUE);
 
     /* Stop the OBEX server */
-    wiced_bt_obex_stop_server(p_cb->obx_handle);
+    wiced_bt_obex_stop_server(p_cb->handle);
 
     if (p_cb->p_cback)
     {
@@ -242,7 +243,7 @@ void wiced_bt_ops_api_accessrsp(wiced_bt_ops_cb_t *p_cb, wiced_bt_ops_data_t *p_
 void wiced_bt_ops_api_close(wiced_bt_ops_cb_t *p_cb, wiced_bt_ops_data_t *p_data)
 {
     /* resources will be freed at WICED_BT_OPS_OBX_CLOSE_EVT */
-    wiced_bt_obex_send_response(p_cb->obx_handle, OBEX_REQ_DISCONNECT, OBEX_RSP_SERVICE_UNAVL, NULL);
+    wiced_bt_obex_send_response(p_cb->handle, OBEX_REQ_DISCONNECT, OBEX_RSP_SERVICE_UNAVL, NULL);
 }
 
 /*******************************************************************************
@@ -282,7 +283,7 @@ void wiced_bt_ops_ci_write(wiced_bt_ops_cb_t *p_cb, wiced_bt_ops_data_t *p_data)
     else    /* Finish aborting */
     {
         wiced_bt_ops_clean_getput(p_cb, TRUE);
-        wiced_bt_obex_send_response(p_cb->obx_handle, OBEX_REQ_ABORT, OBEX_RSP_OK, NULL);
+        wiced_bt_obex_send_response(p_cb->handle, OBEX_REQ_ABORT, OBEX_RSP_OK, NULL);
     }
 }
 
@@ -325,7 +326,7 @@ void wiced_bt_ops_ci_read(wiced_bt_ops_cb_t *p_cb, wiced_bt_ops_data_t *p_data)
     else    /* Finish aborting */
     {
         wiced_bt_ops_clean_getput(p_cb, TRUE);
-        wiced_bt_obex_send_response(p_cb->obx_handle, OBEX_REQ_ABORT, OBEX_RSP_OK, NULL);
+        wiced_bt_obex_send_response(p_cb->handle, OBEX_REQ_ABORT, OBEX_RSP_OK, NULL);
         WICED_BT_TRACE("OPS PUSH OBJ: Finished ABORTING!!!\n");
     }
 }
@@ -355,7 +356,7 @@ void wiced_bt_ops_ci_open(wiced_bt_ops_cb_t *p_cb, wiced_bt_ops_data_t *p_data)
     if (p_cb->aborting)
     {
         wiced_bt_ops_clean_getput(p_cb, TRUE);
-        wiced_bt_obex_send_response(p_cb->obx_handle, OBEX_REQ_ABORT, OBEX_RSP_OK, NULL);
+        wiced_bt_obex_send_response(p_cb->handle, OBEX_REQ_ABORT, OBEX_RSP_OK, NULL);
         return;
     }
 
@@ -500,7 +501,7 @@ void wiced_bt_ops_obx_disc(wiced_bt_ops_cb_t *p_cb, wiced_bt_ops_data_t *p_data)
     rsp_code = (p_evt->obx_event == OBEX_DISCONNECT_REQ_EVT) ? OBEX_RSP_OK
                                                             : OBEX_RSP_BAD_REQUEST;
 
-    wiced_bt_obex_send_response(p_cb->obx_handle, OBEX_REQ_DISCONNECT, rsp_code, NULL);
+    wiced_bt_obex_send_response(p_cb->handle, OBEX_REQ_DISCONNECT, rsp_code, NULL);
 
     /* Done with Obex packet */
     utl_freebuf((void**)&p_evt->p_pkt);
@@ -543,7 +544,7 @@ void wiced_bt_ops_obx_abort(wiced_bt_ops_cb_t *p_cb, wiced_bt_ops_data_t *p_data
     if (!p_cb->cout_active)
     {
         wiced_bt_ops_clean_getput(p_cb, TRUE);
-        wiced_bt_obex_send_response(p_cb->obx_handle, OBEX_REQ_ABORT, rsp_code, NULL);
+        wiced_bt_obex_send_response(p_cb->handle, OBEX_REQ_ABORT, rsp_code, NULL);
     }
     else    /* Delay the response if a call-out function is active */
         p_cb->aborting = TRUE;
@@ -653,7 +654,7 @@ void wiced_bt_ops_obx_get(wiced_bt_ops_cb_t *p_cb, wiced_bt_ops_data_t *p_data)
 void wiced_bt_ops_obx_action(wiced_bt_ops_cb_t *p_cb, wiced_bt_ops_data_t *p_data)
 {
     /* Action operation is not supported in OPP, send reject rsp and free data */
-    wiced_bt_obex_send_response(p_cb->obx_handle, OBEX_REQ_ACTION, OBEX_RSP_NOT_IMPLEMENTED, NULL);
+    wiced_bt_obex_send_response(p_cb->handle, OBEX_REQ_ACTION, OBEX_RSP_NOT_IMPLEMENTED, NULL);
 
     /* done with Obex packet */
     utl_freebuf((void**)&p_data->obx_evt.p_pkt);
@@ -702,7 +703,7 @@ void wiced_bt_ops_obx_cback (wiced_bt_obex_handle_t handle, wiced_bt_obex_event_
     UINT16              event = 0;
 
 #if WICED_BT_OPS_DEBUG == TRUE
-    WICED_BT_TRACE("OBX Event Callback: ops_obx_event[%s]\n", ops_obx_evt_code(obx_event));
+    WICED_BT_TRACE("OBX Event Callback: ops_obx_event[%s] handle %d\n", ops_obx_evt_code(obx_event), handle);
 #endif
 
     switch(obx_event)

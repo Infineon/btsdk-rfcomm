@@ -420,7 +420,7 @@ static void obx_md5_transform(word32 buf[4], word32 const in[16])
 ** Returns      void
 **
 *******************************************************************************/
-static void OBEX_MD5(void *digest, UINT8 *nonce, UINT8 * password, int password_len)
+void OBEX_MD5(void *digest, UINT8 *nonce, UINT8 * password, int password_len)
 {
     struct xMD5Context context;
     UINT8  before[BEFORE_SIZE];

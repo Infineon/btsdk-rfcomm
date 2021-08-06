@@ -88,6 +88,8 @@
 #define wiced_bt_ops_fs_file_len         256
 #endif
 
+#define WICED_BT_OPS_L2CAP_PSM       0x1007
+
 typedef struct
 {
     UINT16  max_file_len;           /* Maximum size file name */
@@ -229,6 +231,7 @@ typedef struct
     int              fd;            /* File Descriptor of opened file */
     BD_ADDR          bd_addr;       /* Device currently connected to */
     wiced_bt_obex_handle_t      obx_handle;
+    wiced_bt_obex_handle_t      handle; /*Session Number + Obex Handle*/
     UINT16           peer_mtu;
     UINT16           psm;           /* PSM for Obex Over L2CAP */
     BOOLEAN          srm;           /* TRUE, to use SIngle Response Mode */

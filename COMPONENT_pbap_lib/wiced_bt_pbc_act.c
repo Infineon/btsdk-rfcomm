@@ -57,6 +57,7 @@
 
 #include "wiced_bt_obex.h"
 #include "wiced_bt_utils.h"
+#include "wiced_bt_l2c.h"
 
 
 /*****************************************************************************
@@ -80,6 +81,8 @@ static char *pbc_obx_evt_code(wiced_bt_obex_event_t evt_code);
 static void pbc_reset_cb (wiced_bt_pbc_cb_t *p_cb);
 static void wiced_bt_pbc_sdp_cback(UINT16 status);
 
+extern void OBEX_MD5(void* digest, UINT8* nonce, UINT8* password, int password_len);
+extern void obx_ca_connect_req_with_auth_res(wiced_bt_obex_handle_t handle, BT_HDR* p_pkt);
 /*****************************************************************************
 **  Action Functions
 *****************************************************************************/
@@ -234,7 +237,6 @@ void wiced_bt_pbc_init_getfile(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
                     {
                         *p++    = WICED_BT_PBC_APH_PROP_SELECTOR;
                         *p++    = 8;    /* Length field 8 */
-#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
                         if ((p_cb->local_features & WICED_BT_PBC_SUP_FEA_UCI_VCARD_FIELD) &&
                             (p_cb->peer_features & WICED_BT_PBC_SUP_FEA_UCI_VCARD_FIELD))
                         {
@@ -252,7 +254,6 @@ void wiced_bt_pbc_init_getfile(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
                         {
                             p_param->filter |= WICED_BT_PBC_FILTER_PHOTO;
                         }
-#endif
                         UINT64_TO_BE_STREAM(p, p_param->filter);
                     }
                     if (p_param->format < WICED_BT_PBC_FORMAT_MAX)
@@ -269,7 +270,7 @@ void wiced_bt_pbc_init_getfile(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
                     *p++    = WICED_BT_PBC_APH_MAX_LIST_COUNT;
                     *p++    = 2;    /* Length field 2 */
                     UINT16_TO_BE_STREAM(p, p_param->max_list_count);
-#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
+
                     /* Add APH resetnewmissedcalls with value 1 to reset NMC */
                     if ((p_param->is_reset_miss_calls == TRUE) && (p_cb->peer_features & WICED_BT_PBC_SUP_FEA_ENH_MISSED_CALLS)
                         && (p_cb->local_features & WICED_BT_PBC_SUP_FEA_ENH_MISSED_CALLS))
@@ -295,7 +296,7 @@ void wiced_bt_pbc_init_getfile(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
 
                     }
 
-#endif
+
                     if (p_param->list_start_offset)
                     {
                         *p++    = WICED_BT_PBC_APH_LIST_STOFF;
@@ -694,26 +695,53 @@ void wiced_bt_pbc_obx_password(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
 {
     wiced_bt_pbc_obx_evt_t    *p_evt = &p_data->obx_evt;
     wiced_bt_pbc_auth_t        parms;
-    //tOBX_AUTH_OPT        options;
+    BT_HDR* p_pkt = NULL;
+    UINT8 auth_response[WICED_BT_PBC_AUTH_FIELD_SIZE], *p = NULL, *p1 = NULL;
+    UINT8 nonce[WICED_BT_PBC_AUTH_DIGEST_SIZE],digest[WICED_BT_PBC_AUTH_DIGEST_SIZE];
 
-    memset(&parms, 0, sizeof(wiced_bt_pbc_auth_t));
+    p = (UINT8 *)(p_evt->p_pkt + 1) + p_evt->p_pkt->offset;
+    p += 7;//Point to Auth Challenge field
+    WICED_BT_TRACE("Auth challenge is %x %x %x %x %x %x", *p,*(p+1),*(p+2),*(p+3),*(p+4),*(p+5));
 
-// TEMPORARILY LEFT IN
 
-//    /* Extract user id from packet (if available) */
-//    if (wiced_bt_obx_read_challenge(p_evt->p_pkt, &parms.realm_charset,
-//                          &parms.p_realm,
-//                          &parms.realm_len, &options))
-//    {
-//        if (options & OBX_AO_USR_ID)
-//            parms.userid_required = TRUE;
-//    }
-//
-    /* Don't need OBX packet any longer */
+    memset(nonce,0,WICED_BT_PBC_AUTH_DIGEST_SIZE);
+    memcpy(nonce, (UINT8 *)(p+5), WICED_BT_PBC_AUTH_DIGEST_SIZE);
+    WICED_BT_TRACE("wiced_bt_pbc_obx_password nonce %x %x", nonce[0], nonce[1]);
+
+    memset(digest,0,WICED_BT_PBC_AUTH_DIGEST_SIZE);
+
+    memset(auth_response, 0, WICED_BT_PBC_AUTH_FIELD_SIZE);
+    memcpy(auth_response, p, WICED_BT_PBC_AUTH_FIELD_SIZE);
+    auth_response[0]=OBEX_HI_AUTH_RSP;
+
+    OBEX_MD5(digest, nonce, (UINT8*)WICED_BT_PBC_PASSWORD, 4);
+    WICED_BT_TRACE("digest is %x %x %x %x", digest[0], digest[1], digest[2], digest[3]);
+    memcpy(&auth_response[5],digest,WICED_BT_PBC_AUTH_DIGEST_SIZE);
+
+    if ((p_pkt = (BT_HDR *)wiced_bt_obex_header_init(p_evt->handle, OBEX_MAX_MTU)) != NULL)
+    {
+	WICED_BT_TRACE("add HI headers, Auth challenge & Auth response");
+		wiced_bt_obex_add_header((UINT8 *)p_pkt, OBEX_HI_TARGET, (UINT8 *)WICED_BT_PBC_PB_ACCESS_TARGET_UUID,
+						 WICED_BT_PBC_UUID_LENGTH);
+
+		//Copy received Auth challenge field
+		p1 = (UINT8 *)(p_pkt+1)+p_pkt->offset+p_pkt->len;
+		memcpy(p1, p, WICED_BT_PBC_AUTH_FIELD_SIZE);
+        p_pkt->len  += WICED_BT_PBC_AUTH_FIELD_SIZE;
+        p_pkt->layer_specific   -= WICED_BT_PBC_AUTH_FIELD_SIZE;
+
+        //Copy Auth response field
+		p1 = (UINT8 *)(p_pkt+1)+p_pkt->offset+p_pkt->len;
+		memcpy(p1, auth_response, WICED_BT_PBC_AUTH_FIELD_SIZE);
+        p_pkt->len  += WICED_BT_PBC_AUTH_FIELD_SIZE;
+        p_pkt->layer_specific   -= WICED_BT_PBC_AUTH_FIELD_SIZE;
+    }
+
+    /* Done with Obex packet */
     utl_freebuf((void**)&p_evt->p_pkt);
 
-    /* Notify application */
-    p_cb->p_cback(WICED_BT_PBC_AUTH_EVT, (wiced_bt_pbc_t *)&parms);
+    WICED_BT_TRACE("sending connect req with Authentication response");
+    obx_ca_connect_req_with_auth_res (p_evt->handle, p_pkt);
 }
 
 /*******************************************************************************
@@ -957,11 +985,13 @@ void wiced_bt_pbc_start_client(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
     wiced_bt_pbc_obx_pkt_t *p_obx = &p_cb->obx;
     wiced_bt_obex_status_t      status = OBEX_NO_RESOURCES;
 
-#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
-    BOOLEAN         use_srm = FALSE;
+
+    BOOLEAN         use_srm = TRUE;
     wiced_bt_obex_triplet_t app_param;
     UINT8           buf[4], *p;
-#endif
+
+
+
 
     /* save peer supported features */
     WICED_BT_TRACE("wiced_bt_pbc_start_client peer_features = 0x%08x peer_repositories = 0x%02x",
@@ -976,7 +1006,7 @@ void wiced_bt_pbc_start_client(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
         {
             wiced_bt_obex_add_header((UINT8 *)p_obx->p_pkt, OBEX_HI_TARGET, (UINT8 *)WICED_BT_PBC_PB_ACCESS_TARGET_UUID,
                              WICED_BT_PBC_UUID_LENGTH);
-#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
+
             /* Add supported features only if peer SDP returns support features */
             if (p_data->sdp_ok.is_peer_features_present)
             {
@@ -987,47 +1017,22 @@ void wiced_bt_pbc_start_client(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
                 app_param.p_array = (UINT8*) buf;
                 wiced_bt_obex_add_triplet_header((UINT8 *)p_obx->p_pkt, OBEX_HI_APP_PARMS, &app_param, 1);
             }
-#endif
+
         }
 
-#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
         if ((status = wiced_bt_obex_alloc_session (NULL, p_data->sdp_ok.scn,
                                         &p_data->sdp_ok.psm,
                                         wiced_bt_pbc_obx_cback,
                                         &p_cb->obx_handle)) == OBEX_SUCCESS)
         {
-            /* set security level */
-            if (p_data->sdp_ok.scn)     /* if SCN is not '0', then we are in legacy mode */
-            {
-                BTM_SetSecurityLevel (TRUE, "WICED_BT_PBC", BTM_SEC_SERVICE_PBAP,
-                                      p_cb->sec_mask, BT_PSM_RFCOMM,
-                                      BTM_SEC_PROTO_RFCOMM, p_data->sdp_ok.scn);
-            }
-            else    /* Using Obex over L2CAP */
-            {
-                BTM_SetSecurityLevel (TRUE, "WICED_BT_PBC", BTM_SEC_SERVICE_PBAP,
-                                      p_cb->sec_mask, p_data->sdp_ok.psm, 0, 0);
-                use_srm = TRUE;
-            }
 
             if ((wiced_bt_obex_create_session (p_cb->bd_addr, OBEX_MAX_MTU, use_srm, 0,
-                               p_cb->obx_handle, p_obx->p_pkt)) == OBEX_SUCCESS)
+                               p_cb->obx_handle, (uint8_t *)p_obx->p_pkt)) == OBEX_SUCCESS)
             {
                 p_obx->p_pkt = NULL;    /* OBX will free the memory */
             }
         }
 
-#else   /* Version 1.1 or earlier so we are good to go */
-        /* set security level */
-
-        //TODO Need security level setting
-
-        wiced_bt_obex_connect(p_cb->bd_addr, p_data->sdp_ok.scn, OBEX_MAX_MTU,
-                       wiced_bt_pbc_obx_cback, &p_cb->obx_handle, (UINT8 *)p_obx->p_pkt);
-        p_obx->p_pkt = NULL;    /* OBX will free the memory */
-
-        status = OBEX_SUCCESS;
-#endif
     }
 
     /* Something failed along the way */
@@ -1087,13 +1092,10 @@ void wiced_bt_pbc_find_service(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
     //tSDP_UUID   uuid_list;
     wiced_bt_uuid_t             uuid_list;
 
-#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
+
     UINT16      attr_list[6];
     UINT16      num_attrs = 6;
-#else
-    UINT16      attr_list[5];
-    UINT16      num_attrs = 5;
-#endif
+
     tWICED_BT_SERVICE_MASK   pbc_services = (WICED_BT_PBAP_SERVICE_MASK);
 
     /* Make sure at least one service was specified */
@@ -1107,11 +1109,9 @@ void wiced_bt_pbc_find_service(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
             /* always search peer features */
             attr_list[3] = ATTR_ID_SUPPORTED_FEATURES_32;
 
-#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
             attr_list[4] = ATTR_ID_OBX_OVR_L2CAP_PSM;
             attr_list[5] = ATTR_ID_SUPPORTED_REPOSITORIES;
 
-#endif
             uuid_list.len = LEN_UUID_16;
 
             if (p_cb->services & WICED_BT_PBAP_SERVICE_MASK)
@@ -1214,6 +1214,11 @@ void wiced_bt_pbc_obx_cback (wiced_bt_obex_handle_t handle, wiced_bt_obex_event_
         if (rsp_code == OBEX_RSP_OK)
         {
             event = WICED_BT_PBC_OBX_CONN_RSP_EVT;
+        }
+        else if (rsp_code == OBEX_RSP_UNAUTHORIZED)
+        {
+		WICED_BT_TRACE("PBC_CBACK: OBEX_RSP_UNAUTHORIZED");
+		event = WICED_BT_PBC_OBX_PASSWORD_EVT;
         }
         else    /* Obex will disconnect underneath BTA */
         {
@@ -1325,7 +1330,7 @@ static void wiced_bt_pbc_sdp_cback(UINT16 status)
             {
                 WICED_BT_TRACE("wiced_bt_pbc_sdp_cback peer supported repositories not found use default");
             }
-#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
+
             /* If profile version is 1.2 or greater, look for supported features and L2CAP PSM */
             if (version >= WICED_BT_PBC_VERSION_1_2)
             {
@@ -1366,13 +1371,12 @@ static void wiced_bt_pbc_sdp_cback(UINT16 status)
                 /* No L2CAP PSM, ignore this record since 1.2 and later requires this!  */
                 else
                 {
-                    WICED_BT_TRACE("bta_mce_sdp_cback PSM for L2CAP not found");
+                    WICED_BT_TRACE("bta_pbc_sdp_cback PSM for L2CAP not found");
                     continue;
 
                 }
             }
 
-#endif /* WICED_BT_PBAP_1_2_SUPPORTED */
 
             /* get scn from proto desc list; if not found, go to next record */
             if (!found && wiced_bt_sdp_find_protocol_list_elem_in_rec(p_rec, UUID_PROTOCOL_RFCOMM, &pe))
@@ -1380,6 +1384,7 @@ static void wiced_bt_pbc_sdp_cback(UINT16 status)
 
                 found = TRUE;
                 scn = (UINT8) pe.params[0];
+                WICED_BT_TRACE("bta_pbc_sdp_cback scn %d", scn);
 
                 /* we've got everything, we're done */
                 break;

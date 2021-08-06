@@ -138,6 +138,51 @@ void obx_ca_connect_req(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
     obx_csm_event(p_cb, OBEX_CONNECT_REQ_CEVT, p_pkt);
 }
 
+void obx_ca_connect_req_with_auth_res(wiced_bt_obex_handle_t handle, BT_HDR *p_pkt)
+{
+    UINT8       msg[OBEX_HDR_OFFSET + OBEX_MAX_CONN_HDR_EXTRA];
+    UINT8       *p = msg;
+    tOBEX_CL_CB *p_cb = obx_cl_get_cb(handle);
+
+
+    OBEX_TRACE_DEBUG4("obx_ca_connect_req_with_auth_res");
+
+    if (p_cb == NULL)
+    {
+        OBEX_TRACE_DEBUG4("obx_ca_connect_req_with_auth_res p_cb is null");
+        return;
+    }
+    else
+    {
+        OBEX_TRACE_DEBUG4("obx_ca_connect_req_with_auth_res p_cb not null");
+    }
+    /* Connect request packet always has the final bit set */
+    *p++ = (OBEX_REQ_CONNECT | OBEX_FINAL);
+    p += OBEX_PKT_LEN_SIZE;
+
+    *p++ = OBEX_VERSION;
+    *p++ = OBEX_CONN_FLAGS;
+    UINT16_TO_BE_STREAM(p, p_cb->ll_cb.port.rx_mtu);
+
+    /* add session sequence number, if session is active */
+    if (p_cb->sess_st == OBEX_SESS_ACTIVE)
+    {
+        *p++ = OBEX_HI_SESSION_SN;
+        *p++ = p_cb->ssn;
+    }
+    if (p_cb->srm)
+    {
+        p_cb->srm   = OBEX_SRM_ENABLE;
+    }
+
+    /* IrOBEX spec forbids connection ID in Connect Request */
+    p_pkt = obx_cl_prepend_msg(p_cb, p_pkt, msg, (UINT16)(p - msg) );
+
+    p_pkt->event    = OBEX_CONNECT_REQ_EVT;
+    //obx_csm_event(p_cb, OBEX_CONNECT_REQ_CEVT, p_pkt);
+    obx_ca_snd_req(p_cb, p_pkt);
+}
+
 /*******************************************************************************
 ** Function     obx_ca_state
 ** Description  change state
@@ -679,6 +724,12 @@ tOBEX_CL_STATE obx_ca_srm_get_req(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
 
     OBEX_TRACE_DEBUG3("obx_ca_srm_get_req sess_st: %d, rx_q.count: %d, srm:0x%x\n", p_cb->sess_st, p_comm->rx_q.count, p_cb->srm );
 
+    if (p_cb->srm == OBEX_SRM_ENABLE)
+    {
+        OBEX_TRACE_DEBUG3("SRM enabled but disengaged, obx_ca_snd_req");
+        return obx_ca_snd_req(p_cb, p_pkt);
+    }
+
     obx_start_timer(&p_cb->ll_cb.comm);
     p_cb->srm &= ~OBEX_SRM_WAIT_UL;
     if (p_cb->sess_st == OBEX_SESS_ACTIVE)
@@ -693,6 +744,8 @@ tOBEX_CL_STATE obx_ca_srm_get_req(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
     {
         obx_cl_proc_pkt (p_cb, p_pkt);
         obx_flow_control(p_comm);
+        OBEX_TRACE_DEBUG1("Freeing dequeued and processed pkt 0x%x",p_pkt);
+        GKI_freebuf(p_pkt);
         OBEX_TRACE_DEBUG1("obx_ca_srm_get_req rx_q.count: %d\n", p_cb->ll_cb.comm.rx_q.count );
     }
     OBEX_TRACE_DEBUG1("obx_ca_srm_get_req srm:0x%x\n", p_cb->srm );
@@ -739,7 +792,6 @@ tOBEX_CL_STATE obx_ca_srm_get_notify(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
                 {
                     OBEX_TRACE_DEBUG1("obx_ca_srm_get_notify - Resending Get Request (SRMP=1), hdl %x\n", p_cb->ll_cb.l2c.handle);
                     obx_resend_get_req_msg(p_cb->ll_cb.l2c.handle);
-                    state = OBEX_CS_GET_SRM;
                 }
 #endif
                 p_cb->srmp &= ~OBEX_SRMP_CL_FINAL;
@@ -759,6 +811,9 @@ tOBEX_CL_STATE obx_ca_srm_get_notify(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
         state = obx_ca_notify (p_cb, p_pkt);
         if (state == OBEX_CS_GET_SRM || state == OBEX_CS_NULL)
             state = OBEX_CS_GET_TRANSACTION;
+
+        if (p_cb->state == OBEX_CS_GET_REQ_SENT && state == OBEX_CS_GET_TRANSACTION)
+            state = OBEX_CS_GET_REQ_SENT;
     }
     OBEX_TRACE_DEBUG2("obx_ca_srm_get_notify srm: 0x%x(e) state:%s\n", p_cb->srm, obx_sr_get_state_name(state) );
     return state;
@@ -850,6 +905,11 @@ tOBEX_CL_STATE obx_ca_snd_req(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
         state = OBEX_CS_PARTIAL_SENT;
     }
 
+    if (p_cb->srm == OBEX_SRM_ENABLE && p_cb->state == OBEX_CS_GET_SRM)
+    {
+        OBEX_TRACE_DEBUG3("SRM disengaged, sent get req, change state to OBEX_CS_GET_REQ_SENT\n");
+        state = OBEX_CS_GET_REQ_SENT;
+    }
     return state;
 }
 
@@ -969,6 +1029,9 @@ tOBEX_CL_STATE obx_ca_connect_fail(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
     /* Notify the user of the failure and .. */
     (*p_cb->p_cback)(p_cb->ll_cb.comm.handle, OBEX_CONNECT_RSP_EVT, p_cb->rsp_code, p_cb->param, (UINT8 *)p_pkt);
     p_cb->api_evt   = OBEX_NULL_EVT;
+
+    if (p_cb->rsp_code == OBEX_RSP_UNAUTHORIZED)
+	return state;
     /* and close the RFCOMM port */
     obx_csm_event(p_cb, OBEX_DISCNT_REQ_CEVT, NULL);
 
@@ -1129,7 +1192,7 @@ tOBEX_CL_STATE obx_ca_notify(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
         p_cb->ssn = p_cb->param.ssn;
         OBEX_TRACE_DEBUG1( "ssn:0x%x\n", p_cb->ssn);
     }
-
+    OBEX_TRACE_DEBUG1("obx_ca_notify %d", state);
     return state;
 }
 

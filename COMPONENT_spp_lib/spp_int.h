@@ -47,6 +47,8 @@
 
 #define     SPP_BUFFER_POOL                    2
 #define     SPP_MAX_CONNECTIONS                2
+
+//#define SPP_TRACE_ENABLE
 #if defined(WICED_BT_TRACE_ENABLE) && defined(SPP_TRACE_ENABLE)
 #define     SPP_TRACE                          WICED_BT_TRACE
 #else

@@ -296,7 +296,7 @@ void wiced_bt_ops_put_obj_rsp(UINT8 rsp_code)
     else
         p_cb->obx_oper = OPS_OP_NONE;
 
-    wiced_bt_obex_send_response(p_cb->obx_handle, OBEX_REQ_PUT, rsp_code, NULL);
+    wiced_bt_obex_send_response(p_cb->handle, OBEX_REQ_PUT, rsp_code, NULL);
 }
 
 /*******************************************************************************

@@ -194,9 +194,8 @@ wiced_bt_obex_status_t wiced_bt_obex_stop_server(wiced_bt_obex_handle_t handle)
 
 #ifdef OBEX_LIB_L2CAP_INCLUDED
         if (p_cb->psm)
-            L2CA_DEREGISTER (p_cb->psm);
+		wiced_bt_l2cap_deregister (p_cb->psm);
 #endif
-
         obx_sr_free_cb (handle);
     }
     else

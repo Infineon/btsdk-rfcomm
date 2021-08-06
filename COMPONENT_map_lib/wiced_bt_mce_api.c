@@ -117,12 +117,15 @@ void wiced_bt_mce_disable(void)
 **  Parameters      sec_mask - The security setting for the message access server.
 **                  p_service_name - The name of the Message Notification service, in SDP.
 **                                   Maximum length is 35 bytes.
+**                  scn - The RFCOMM SCN number where MN server listens for incoming request.
+**                  psm - [MAP 1.2 and above]
+**                        The L2CAP PSM number where MN server listens for incoming request.
 **                  features - Local supported features
 **
 ** Returns          void
 **
 *******************************************************************************/
-void wiced_bt_mce_mn_start(UINT8 sec_mask, const char *p_service_name, wiced_bt_ma_supported_features_t features)
+void wiced_bt_mce_mn_start(UINT8 sec_mask, const char *p_service_name, const UINT8 scn, const UINT16 psm, wiced_bt_ma_supported_features_t features)
 {
     wiced_mce_api_mn_start_t *p_msg;
 
@@ -137,10 +140,9 @@ void wiced_bt_mce_mn_start(UINT8 sec_mask, const char *p_service_name, wiced_bt_
         if (p_service_name)
             BCM_STRNCPY_S(p_msg->servicename, sizeof(p_msg->servicename), p_service_name, BD_NAME_LEN);
 
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
+        p_msg->scn = scn;
+        p_msg->psm = psm;
         p_msg->mce_local_features = features;
-#endif
-
         wiced_mce_send_event((BT_HDR *)p_msg);
     }
 }
@@ -477,7 +479,7 @@ void wiced_bt_mce_get_folder_list(wiced_bt_ma_sess_handle_t session_id,
 *******************************************************************************/
 void wiced_bt_mce_get_msg_list(wiced_bt_ma_sess_handle_t session_id,
                                const char *p_folder,
-                               wiced_bt_ma_msg_list_filter_param_t *p_filter_param)
+                               wiced_bt_ma_msg_list_filter_param_t *p_filter_param, wiced_bool_t is_srmp_pause)
 {
     wiced_mce_data_t     *p_msg;
     wiced_mce_api_list_t *p_list;
@@ -507,6 +509,7 @@ void wiced_bt_mce_get_msg_list(wiced_bt_ma_sess_handle_t session_id,
         /* set default value of max list count and starting offset */
         p_list->max_list_count = 0xffff;
         p_list->list_start_offset =0;
+        p_list->is_srmp_pause = is_srmp_pause;
 
         if (p_filter_param != NULL)
         {
@@ -573,7 +576,6 @@ void wiced_bt_mce_get_msg(wiced_bt_ma_sess_handle_t session_id, wiced_bt_ma_get_
 *******************************************************************************/
 void wiced_bt_mce_get_mas_instance_info(wiced_bt_ma_sess_handle_t session_id, wiced_bt_ma_inst_id_t mas_instance_id)
 {
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
     wiced_mce_api_get_mas_ins_info_t   *p_msg;
 
     if ((p_msg = (wiced_mce_api_get_mas_ins_info_t *)GKI_getbuf(sizeof(wiced_mce_api_get_mas_ins_info_t))) != NULL)
@@ -588,7 +590,6 @@ void wiced_bt_mce_get_mas_instance_info(wiced_bt_ma_sess_handle_t session_id, wi
 
         wiced_mce_send_event((BT_HDR *)p_msg);
     }
-#endif
 }
 
 /*******************************************************************************

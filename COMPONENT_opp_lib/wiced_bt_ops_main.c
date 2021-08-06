@@ -297,6 +297,7 @@ static void wiced_bt_ops_api_enable(wiced_bt_ops_cb_t *p_cb, wiced_bt_ops_data_t
 *******************************************************************************/
 BOOLEAN wiced_bt_ops_hdl_event(BT_HDR *p_msg)
 {
+    wiced_bt_ops_obx_evt_t* obx_et;
 #if WICED_BT_OPS_DEBUG == TRUE
     wiced_bt_ops_state_t in_state = wiced_bt_ops_cb.state;
 #endif
@@ -323,6 +324,14 @@ BOOLEAN wiced_bt_ops_hdl_event(BT_HDR *p_msg)
             break;
 
         default:
+
+            if (p_msg->event == WICED_BT_OPS_OBX_CONN_EVT ||
+                p_msg->event == WICED_BT_OPS_OBX_DISC_EVT)
+            {
+                obx_et = (wiced_bt_ops_obx_evt_t*)p_msg;
+                wiced_bt_ops_cb.handle = obx_et->handle;
+                WICED_BT_TRACE("Storing handle as %d", wiced_bt_ops_cb.handle);
+            }
 
             wiced_bt_ops_sm_execute(&wiced_bt_ops_cb, p_msg->event, (wiced_bt_ops_data_t *) p_msg);
 

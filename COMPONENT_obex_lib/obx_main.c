@@ -212,6 +212,13 @@ void obx_start_timer(tOBEX_COMM_CB *p_pcb)
 
     if (timeout)
     {
+        if (p_pcb->tle.in_use)
+        {
+            // wiced_start_timer() API is not capable of adjusting timeout value of an already running timer.
+            // instead, the current running TIMER_LIST_ENT needs to be stopped then start again.
+            OBEX_TRACE_DEBUG1( "timer p_tle(0x%x) is already runnling\n", &p_pcb->tle);
+            obx_stop_timer(&p_pcb->tle);
+        }
         if (p_pcb->handle & OBEX_CL_HANDLE_MASK)
         {
             if (p_pcb->p_txmsg && p_pcb->p_txmsg->event == OBEX_DISCONNECT_REQ_EVT)
@@ -229,6 +236,7 @@ void obx_start_timer(tOBEX_COMM_CB *p_pcb)
             wiced_init_timer(&p_pcb->tle.wiced_timer, obx_sr_timeout, (uint32_t)&p_pcb->tle, WICED_SECONDS_TIMER);
         }
         wiced_start_timer(&p_pcb->tle.wiced_timer, timeout);
+        p_pcb->tle.in_use = TRUE;
     }
     OBEX_TRACE_DEBUG2("obx_start_timer val:%d, p_tle:0x%x\n", timeout, &p_pcb->tle);
 }
@@ -240,6 +248,7 @@ void obx_start_timer(tOBEX_COMM_CB *p_pcb)
 void obx_stop_timer(TIMER_LIST_ENT *p_tle)
 {
     wiced_stop_timer(&p_tle->wiced_timer);
+    p_tle->in_use = FALSE;
     OBEX_TRACE_DEBUG1("obx_stop_timer p_tle:0x%x\n", p_tle);
 }
 
@@ -261,7 +270,10 @@ void obx_cl_timeout(uint32_t cb_params)
     if (obx_cb.timeout_val)
         wiced_start_timer(&p_tle->wiced_timer, obx_cb.timeout_val);
     else
+    {
         wiced_stop_timer(&p_tle->wiced_timer);
+        p_tle->in_use = FALSE;
+    }
     obx_csm_event(p_cb, OBEX_TIMEOUT_CEVT, NULL);
     (*p_cback) (handle, OBEX_TIMEOUT_EVT, OBEX_RSP_DEFAULT, evtp, NULL);
 }
@@ -391,13 +403,16 @@ void obx_cl_free_cb(tOBEX_CL_CB * p_cb)
     {
         OBEX_TRACE_DEBUG2("obx_cl_free_cb id: %d, sess_st:%d\n", p_cb->ll_cb.comm.id, p_cb->sess_st);
 
-        if (p_cb->ll_cb.comm.id>0)
+        if (p_cb->ll_cb.comm.id > 0)
         {
-            if (p_cb->ll_cb.comm.p_send_fn == (tOBEX_SEND_FN *)obx_rfc_snd_msg)
+            if (p_cb->ll_cb.comm.p_send_fn == (tOBEX_SEND_FN*)obx_rfc_snd_msg)
                 obx_cb.hdl_map[p_cb->ll_cb.port.port_handle - 1] = 0;
 #ifdef OBEX_LIB_L2CAP_INCLUDED
             else
-                obx_cb.l2c_map[p_cb->ll_cb.l2c.lcid - L2CAP_BASE_APPL_CID] = 0;
+            {
+                OBEX_TRACE_DEBUG0("setting l2c_map id %d to 0", (p_cb->ll_cb.l2c.lcid - L2CAP_BASE_APPL_CID) % MAX_L2CAP_CHANNELS);
+                obx_cb.l2c_map[(p_cb->ll_cb.l2c.lcid - L2CAP_BASE_APPL_CID) % MAX_L2CAP_CHANNELS] = 0;
+            }
 #endif
         }
 
@@ -412,7 +427,7 @@ void obx_cl_free_cb(tOBEX_CL_CB * p_cb)
 
 #ifdef OBEX_LIB_L2CAP_INCLUDED
         if (p_cb->psm)
-            L2CA_DEREGISTER (p_cb->psm);
+		wiced_bt_l2cap_deregister (p_cb->psm);
 #endif
 
         /* make sure the timer is stopped */
@@ -523,7 +538,10 @@ void obx_sr_timeout(uint32_t cb_params)
     if (obx_cb.timeout_val)
         wiced_start_timer(&p_tle->wiced_timer, obx_cb.timeout_val);
     else
+    {
         wiced_stop_timer(&p_tle->wiced_timer);
+        p_tle->in_use = FALSE;
+    }
     p_cb = &obx_cb.server[p_scb->handle - 1];
     p_cback = p_cb->p_cback;
     obx_ssm_event(p_scb, OBEX_TIMEOUT_SEVT, NULL);
@@ -708,7 +726,10 @@ void obx_sr_free_cb(tOBEX_HANDLE handle)
                         obx_cb.hdl_map[p_scb->ll_cb.port.port_handle - 1] = 0;
 #ifdef OBEX_LIB_L2CAP_INCLUDED
                     else
-                        obx_cb.l2c_map[p_scb->ll_cb.l2c.lcid - L2CAP_BASE_APPL_CID] = 0;
+                    {
+                        OBEX_TRACE_DEBUG0("setting l2c_map id %d to 0", (p_scb->ll_cb.l2c.lcid - L2CAP_BASE_APPL_CID) % MAX_L2CAP_CHANNELS);
+                        obx_cb.l2c_map[(p_scb->ll_cb.l2c.lcid - L2CAP_BASE_APPL_CID) % MAX_L2CAP_CHANNELS] = 0;
+                    }
 #endif
                 }
                 memset(p_scb, 0, sizeof(tOBEX_SR_SESS_CB) );

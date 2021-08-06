@@ -47,6 +47,7 @@
 
 #include "wiced_bt_mce_int.h"
 #include "wiced_bt_utils.h"
+#include "wiced_bt_mce_api.h"
 
 /*******************************************************************************
 **
@@ -68,6 +69,7 @@ void wiced_mce_reset_icb (wiced_mce_inst_cb_t *p_icb)
     p_icb->req_pending   = FALSE;
     p_icb->first_req_pkt = FALSE;
     p_icb->int_abort     = FALSE;
+    p_icb->first_push_msg = TRUE;
 }
 
 /*******************************************************************************
@@ -237,6 +239,12 @@ wiced_bt_ma_status_t wiced_mce_add_list_hdr(wiced_mce_obx_pkt_t *p_obx, wiced_mc
     {
         /* add type header */
         is_ok = wiced_bt_obex_add_header((uint8_t *)p_obx->p_pkt, OBEX_HI_TYPE, p, strlen((char *)p) + 1);
+
+        if (p_list->is_srmp_pause)
+        {
+            uint8_t srmp = 1;
+            wiced_bt_obex_add_header((uint8_t *)p_obx->p_pkt, OBEX_HI_SRM_PARAM, &srmp, sizeof(uint8_t));
+        }
 
         if (is_ok)
         {
@@ -647,7 +655,6 @@ void wiced_mce_proc_get_msg_rsp(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *
     }
 }
 
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
 /*******************************************************************************
 **
 ** Function         wiced_mce_proc_get_mas_ins_info_rsp
@@ -667,7 +674,7 @@ void wiced_mce_proc_get_mas_ins_info_rsp(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce
     wiced_mce_ma_cb_t            *p_ccb = WICED_MCE_GET_MA_CB_PTR(ccb_idx);
     wiced_mce_inst_cb_t         *p_icb = WICED_MCE_GET_MA_INST_CB_PTR(ccb_idx, icb_idx);
     wiced_mce_obx_evt_t         *p_evt = &p_data->obx_evt;
-    wiced_mce_api_get_mas_ins_info_t app_evt;
+    wiced_bt_mce_get_mas_ins_info_t app_evt;
     UINT16                      len;
     wiced_bt_ma_status_t        status = WICED_BT_MA_STATUS_FAIL;
     BOOLEAN                     final;
@@ -676,7 +683,7 @@ void wiced_mce_proc_get_mas_ins_info_rsp(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce
     if (p_evt->rsp_code == OBEX_RSP_OK)
     {
         memset (p_icb->mas_ins_info, 0, WICED_BT_MA_INS_INFO_MAX_LEN);
-        if (wiced_bt_obex_find_body_header(p_evt->p_pkt, &p_byte, &len, &final) )
+        if (wiced_bt_obex_find_body_header((uint8_t *)p_evt->p_pkt, &p_byte, &len, &final) )
         {
             status = WICED_BT_MA_STATUS_OK;
             memcpy(p_icb->mas_ins_info, p_byte, len);
@@ -703,9 +710,8 @@ void wiced_mce_proc_get_mas_ins_info_rsp(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce
     wiced_mce_reset_icb(p_icb);
     /* Free the message */
     utl_freebuf((void**)&p_data->obx_evt.p_pkt);
-    p_cb->p_cback(WICED_MCE_GET_MAS_INS_INFO, (wiced_bt_mce_t *)&app_evt);
+    p_cb->p_cback(WICED_BT_MCE_GET_MAS_INS_INFO, (wiced_bt_mce_t *)&app_evt);
 }
-#endif /* #if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE) */
 
 #if 0
 /*******************************************************************************
@@ -998,12 +1004,10 @@ BOOLEAN wiced_mce_find_ma_cb_indexes(wiced_mce_data_t *p_msg, UINT8 *p_ccb_idx, 
                 *p_ccb_idx = p_msg->sdp_result.ccb_idx;
             }
             break;
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
         case WICED_MCE_API_GET_MAS_INS_INFO_EVT:
             if (wiced_mce_find_obx_handle_match_ma_cb_indexes(p_msg->api_get_mas_ins_info.hdr.layer_specific, p_ccb_idx, p_icb_idx))
                 found = TRUE;
             break;
-#endif
         case WICED_MCE_MA_OBX_ABORT_RSP_EVT:
         case WICED_MCE_MA_OBX_CONN_RSP_EVT:
         case WICED_MCE_MA_OBX_PUT_RSP_EVT:

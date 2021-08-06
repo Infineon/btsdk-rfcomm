@@ -66,6 +66,12 @@
 typedef UINT8 wiced_bt_pbc_flag_t;
 
 
+#define WICED_BT_PBC_PASSWORD       "0000"
+#define WICED_BT_PBC_AUTH_DIGEST_SIZE 16
+#define WICED_BT_PBC_AUTH_FIELD_SIZE 27
+
+
+
 /* Client supported feature bits */
 #define WICED_BT_PBC_SUP_FEA_DOWNLOADING                         0x00000001      /* Downloading */
 #define WICED_BT_PBC_SUP_FEA_BROWSING                            0x00000002      /* Browsing */

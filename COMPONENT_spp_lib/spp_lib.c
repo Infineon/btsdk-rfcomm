@@ -104,6 +104,7 @@ static void         spp_sdp_cback(uint16_t status);
 static void         spp_sdp_free_db(spp_scb_t *p_scb);
 static void         spp_rfcomm_do_close(spp_scb_t *p_scb);
 static spp_scb_t*   spp_lib_get_scb_pointer( spp_scb_index_type_t index, uint16_t port_handle );
+static spp_scb_t*   spp_lib_find_scb_by_bdaddr(BD_ADDR bd_addr);
 
 /*
  * Start up the SPP service.
@@ -285,6 +286,22 @@ wiced_bool_t wiced_bt_spp_can_send_more_data(uint16_t handle)
 }
 
 /*
+ * Return the connection state
+ */
+uint8_t wiced_bt_spp_get_connection_state(BD_ADDR bd_addr)
+{
+    spp_scb_t *p_scb = spp_lib_find_scb_by_bdaddr(bd_addr);
+    if (p_scb)
+    {
+        return p_scb->state;
+    }
+    else
+    {
+        return SPP_SESSION_STATE_IDLE;
+    }
+}
+
+/*
  * RFCOMM management callback
  */
 static void spp_rfcomm_control_callback(uint32_t port_status, uint16_t port_handle)
@@ -376,6 +393,10 @@ void spp_rfcomm_do_open(spp_scb_t *p_scb)
     if (rfcomm_result != WICED_BT_RFCOMM_SUCCESS)
     {
         /* TBD Pass back that the connection attempt failed */
+        if(p_scb->p_spp_reg->p_connection_failed_callback)
+        {
+            p_scb->p_spp_reg->p_connection_failed_callback();
+        }
 
         spp_rfcomm_start_server(p_scb);
     }
@@ -666,6 +687,28 @@ static spp_scb_t* spp_lib_get_scb_pointer( spp_scb_index_type_t index, uint16_t 
         if( spp_scb_found )
             return &spp_scb[i];
     }
+    return NULL;
+}
+
+/*
+ * Find scb by bdaddr
+ */
+static spp_scb_t* spp_lib_find_scb_by_bdaddr(BD_ADDR bd_addr)
+{
+    uint8_t i;
+    spp_scb_t *p_scb;
+
+    for( i = 0; i < SPP_MAX_CONNECTIONS; i++ )
+    {
+        p_scb = &spp_scb[i];
+        if ((p_scb->in_use) && (utl_bdcmp(p_scb->server_addr, bd_addr) == 0))
+        {
+            SPP_TRACE ("spp_lib_find_scb_by_bdaddr(), index:%d", i);
+            return p_scb;
+        }
+    }
+
+    SPP_TRACE("spp_lib_find_scb_by_bdaddr(), not found");
     return NULL;
 }
 

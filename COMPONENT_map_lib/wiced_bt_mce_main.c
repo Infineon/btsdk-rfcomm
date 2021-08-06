@@ -43,6 +43,7 @@
 
 #include "wiced.h"
 #include "wiced_bt_mce_int.h"
+#include "wiced_bt_l2c.h"
 
 /*****************************************************************************
 ** Message Access Client State Table
@@ -71,9 +72,7 @@ enum
     WICED_MCE_MA_CHDIR,
     WICED_MCE_MA_LIST,
     WICED_MCE_MA_GET_MSG,
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
     WICED_MCE_MA_GET_MAS_INS_INFO,
-#endif
     WICED_MCE_MA_SET_STS,
     WICED_MCE_MA_TRANS_CMPL,
     WICED_MCE_MA_OBX_ABORT_RSP,
@@ -103,9 +102,7 @@ static const tWICED_MCE_MA_ACTION wiced_mce_ma_action[] =
     wiced_mce_ma_chdir,
     wiced_mce_ma_list,
     wiced_mce_ma_get_msg,
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
     wiced_mce_ma_get_mas_ins_info,
-#endif
     wiced_mce_ma_set_sts,
     wiced_mce_ma_trans_cmpl,
     wiced_mce_obx_abort_rsp,
@@ -131,9 +128,7 @@ static const UINT8 wiced_mce_ma_st_idle[][WICED_MCE_MA_NUM_COLS] =
 /* WICED_MCE_API_CHDIR_EVT     */             {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_IDLE_ST},
 /* WICED_MCE_API_LIST_EVT      */             {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_IDLE_ST},
 /* WICED_MCE_API_GET_MSG_EVT   */             {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_IDLE_ST},
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
 /* WICED_MCE_API_GET_MAS_INS_INFO_EVT */      {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_IDLE_ST},
-#endif
 /* WICED_MCE_API_SET_STS_EVT   */             {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_IDLE_ST},
 /* WICED_MCE_API_PUSH_EVT      */             {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_IDLE_ST},
 /* WICED_MCE_API_ABORT_EVT     */             {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_IDLE_ST},
@@ -162,9 +157,7 @@ static const UINT8 wiced_mce_ma_st_w4_conn[][WICED_MCE_MA_NUM_COLS] =
 /* WICED_MCE_API_CHDIR_EVT     */             {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_W4_CONN_ST},
 /* WICED_MCE_API_LIST_EVT      */             {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_W4_CONN_ST},
 /* WICED_MCE_API_GET_MSG_EVT   */             {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_W4_CONN_ST},
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
 /* WICED_MCE_API_GET_MAS_INS_INFO_EVT */      {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_W4_CONN_ST},
-#endif
 /* WICED_MCE_API_SET_STS_EVT   */             {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_W4_CONN_ST},
 /* WICED_MCE_API_PUSH_EVT      */             {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_W4_CONN_ST},
 /* WICED_MCE_API_ABORT_EVT     */             {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_W4_CONN_ST},
@@ -193,9 +186,7 @@ static const UINT8 wiced_mce_ma_st_connected[][WICED_MCE_MA_NUM_COLS] =
 /* WICED_MCE_API_CHDIR_EVT     */             {WICED_MCE_MA_CHDIR,           WICED_MCE_MA_CONN_ST},
 /* WICED_MCE_API_LIST_EVT      */             {WICED_MCE_MA_LIST,            WICED_MCE_MA_CONN_ST},
 /* WICED_MCE_API_GET_MSG_EVT   */             {WICED_MCE_MA_GET_MSG,         WICED_MCE_MA_CONN_ST},
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
 /* WICED_MCE_API_GET_MAS_INS_INFO_EVT */      {WICED_MCE_MA_GET_MAS_INS_INFO,WICED_MCE_MA_CONN_ST},
-#endif
 /* WICED_MCE_API_SET_STS_EVT   */             {WICED_MCE_MA_SET_STS,         WICED_MCE_MA_CONN_ST},
 /* WICED_MCE_API_PUSH_EVT      */             {WICED_MCE_MA_PUSH_MSG,        WICED_MCE_MA_CONN_ST},
 /* WICED_MCE_API_ABORT_EVT     */             {WICED_MCE_MA_ABORT,           WICED_MCE_MA_CONN_ST},
@@ -224,9 +215,7 @@ static const UINT8 wiced_mce_ma_st_closing[][WICED_MCE_MA_NUM_COLS] =
 /* WICED_MCE_API_CHDIR_EVT     */             {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_CLOSING_ST},
 /* WICED_MCE_API_LIST_EVT      */             {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_CLOSING_ST},
 /* WICED_MCE_API_GET_MSG_EVT   */             {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_CLOSING_ST},
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
 /* WICED_MCE_API_GET_MAS_INS_INFO_EVT */      {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_CLOSING_ST},
-#endif
 /* WICED_MCE_API_SET_STS_EVT   */             {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_CLOSING_ST},
 /* WICED_MCE_API_PUSH_EVT      */             {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_CLOSING_ST},
 /* WICED_MCE_API_ABORT_EVT     */             {WICED_MCE_MA_IGNORE,          WICED_MCE_MA_CLOSING_ST},
@@ -602,9 +591,8 @@ static void wiced_mce_discover_cback(UINT16 status)
             wiced_bt_sdp_find_profile_version_in_rec (p_rec, UUID_SERVCLASS_MAP_PROFILE, &dis.rec[cnt].rec_version);
             APPL_TRACE_EVENT1("wiced_mce_discover_cback found version=%d\n", dis.rec[cnt].rec_version);
 
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
             /* If profile version is 1.2 or greater, look for supported features and L2CAP PSM */
-            if (dis.rec[cnt].rec_version >= BTA_MA_VERSION_1_2)
+            if (dis.rec[cnt].rec_version >= WICED_BT_MA_VERSION_1_2)
             {
 
                 /* Look for peer supported features */
@@ -646,7 +634,6 @@ static void wiced_mce_discover_cback(UINT16 status)
                 }
 
             }
-#endif /* BTA_MAP_1_2_SUPPORTED */
             /* get scn from proto desc list; if not found, go to next record */
             if (wiced_bt_sdp_find_protocol_list_elem_in_rec(p_rec, UUID_PROTOCOL_RFCOMM, &pe))
             {
@@ -871,13 +858,8 @@ static void wiced_mce_api_discover(wiced_mce_cb_t *p_cb, wiced_mce_data_t *p_dat
 {
     wiced_bt_mce_discover_t dis;
     wiced_bt_uuid_t uuid_list;
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
     UINT16          attr_list[8];
     UINT16          num_attrs = 8;
-#else
-    UINT16          attr_list[7];
-    UINT16          num_attrs = 7;
-#endif
 
     APPL_TRACE_EVENT0("wiced_mce_api_discover\n");
 
@@ -896,9 +878,7 @@ static void wiced_mce_api_discover(wiced_mce_cb_t *p_cb, wiced_mce_data_t *p_dat
         attr_list[5] = ATTR_ID_SUPPORTED_MSG_TYPE;
         /* always search peer features */
         attr_list[6] = ATTR_ID_SUPPORTED_FEATURES_32;
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
         attr_list[7] = ATTR_ID_OBX_OVR_L2CAP_PSM;
-#endif
 
         uuid_list.len = LEN_UUID_16;
         uuid_list.uu.uuid16 = UUID_SERVCLASS_MESSAGE_ACCESS;
@@ -974,6 +954,8 @@ static wiced_mce_inst_cb_t *wiced_mce_alloc_icb(wiced_bt_ma_inst_id_t inst_id, U
                              wiced_mce_rsp_timer_cback,
                              (UINT32)WICED_MCE_CCB_INST_TO_TPARAM(((UINT16)ccb_idx), inst_id),
                              WICED_SECONDS_TIMER);
+
+            wiced_mce_cb.ccb[ccb_idx].icb[i].first_push_msg = WICED_TRUE;
 
             APPL_TRACE_DEBUG1("Find an empty control block idx = %d\n", i);
             return &wiced_mce_cb.ccb[ccb_idx].icb[i];
@@ -1100,10 +1082,8 @@ static char *mce_evt_code(wiced_mce_int_evt_t evt_code)
             return "WICED_MCE_API_LIST_EVT";
         case WICED_MCE_API_GET_MSG_EVT:
             return "WICED_MCE_API_GET_MSG_EVT";
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
         case WICED_MCE_API_GET_MAS_INS_INFO_EVT:
             return "WICED_MCE_API_GET_MAS_INS_INFO_EVT";
-#endif
         case WICED_MCE_API_SET_STS_EVT:
             return "WICED_MCE_API_SET_STS_EVT";
         case WICED_MCE_API_PUSH_EVT:

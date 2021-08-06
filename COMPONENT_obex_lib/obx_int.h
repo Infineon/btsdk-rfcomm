@@ -54,7 +54,7 @@
 #define OBEX_CMD_POOL_SIZE          256
 #define OBEX_CMD_POOL_ID            2
 #define OBEX_LRG_DATA_POOL_SIZE     GKI_MAX_BUF_SIZE
-#define OBEX_LRG_DATA_POOL_ID       4
+#define OBEX_LRG_DATA_POOL_ID       3
 
 #undef  MAX_RFC_PORTS
 #define MAX_RFC_PORTS               5
@@ -62,6 +62,9 @@
 #undef  MAX_L2CAP_CHANNELS
 #define MAX_L2CAP_CHANNELS          10
 
+#ifndef L2CAP_BASE_APPL_CID
+#define L2CAP_BASE_APPL_CID             0x0040
+#endif
 #undef  BT_USE_TRACES
 #define BT_USE_TRACES               TRUE
 
@@ -78,7 +81,7 @@
 
 #define OBEX_MAX_REALM_LEN          30
 
-#define OBEX_MAX_RX_QUEUE_COUNT     3
+#define OBEX_MAX_RX_QUEUE_COUNT     1
 
 #define OBEX_CONN_ID_SIZE           4
 #define OBEX_PKT_LEN_SIZE           2
@@ -92,6 +95,8 @@
 #define OBEX_ABORT_HDRS_OFFSET      3
 #define OBEX_ACTION_HDRS_OFFSET     3
 #define OBEX_RESPONSE_HDRS_OFFSET   3
+
+#define OBEX_LIB_L2CAP_INCLUDED TRUE
 
 #define OBEX_TRACE_API0             WICED_BT_TRACE
 #define OBEX_TRACE_API1             WICED_BT_TRACE
@@ -726,6 +731,7 @@ extern tOBEX_CL_STATE obx_ca_fail_rsp(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt);
 extern tOBEX_CL_STATE obx_ca_state(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt);
 extern tOBEX_CL_STATE obx_ca_start_timer(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt);
 extern tOBEX_CL_STATE obx_ca_connect_ok(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt);
+extern tOBEX_CL_STATE obx_ca_connect_ok_auth(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt);
 extern tOBEX_CL_STATE obx_ca_session_ok(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt);
 extern tOBEX_CL_STATE obx_ca_session_cont(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt);
 extern tOBEX_CL_STATE obx_ca_session_get(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt);
@@ -791,7 +797,7 @@ extern void obx_register_l2c(tOBEX_CL_CB *p_cl_cb, UINT16 psm);
 extern tOBEX_STATUS obx_open_l2c(tOBEX_CL_CB *p_cl_cb, const BD_ADDR bd_addr);
 extern tOBEX_STATUS obx_l2c_sr_register (tOBEX_SR_CB  *p_cb);
 extern void obx_close_l2c(UINT16 lcid);
-extern BOOLEAN obx_l2c_snd_msg(tOBEX_L2C_CB *p_l2cb);
+extern BOOLEAN obx_l2c_snd_msg(tOBEX_LL_CB *p_l2cb);
 extern void obx_l2c_snd_evt (tOBEX_L2C_CB *p_l2cb, tOBEX_L2C_EVT_PARAM  param, tOBEX_L2C_EVT l2c_evt);
 extern void obx_sr_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg);
 extern void obx_cl_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg);
@@ -857,5 +863,6 @@ extern void GKI_enqueue_head (BUFFER_Q *p_q, void *p_buf);
 extern BOOLEAN GKI_queue_is_empty(BUFFER_Q *p_q);
 extern void *GKI_dequeue (BUFFER_Q *p_q);
 extern void btu_stop_timer (TIMER_LIST_ENT *p_tle);
+extern wiced_bool_t wiced_bt_obex_send_pkt_allowed(wiced_bt_obex_handle_t handle);
 
 #endif /* OBX_INT_H */

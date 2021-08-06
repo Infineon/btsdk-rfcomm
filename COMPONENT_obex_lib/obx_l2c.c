@@ -47,9 +47,10 @@
 #include "wiced_bt_obex.h"
 #include "obx_int.h"
 #include "wiced_bt_l2c.h"
+#include "wiced_bt_rfcomm.h"
 
 #ifdef OBEX_LIB_L2CAP_INCLUDED
-
+#include "l2cdefs.h"
 /* Configuration flags. */
 #define OBEX_L2C_CFG_IND_DONE    0x01
 #define OBEX_L2C_CFG_CFM_DONE    0x02
@@ -63,49 +64,54 @@
 #define OBEX_CH_OPEN    3       /* Channel opened */
 
 /* callback function declarations */
-static void obx_l2c_connect_ind_cback(BD_ADDR bd_addr, UINT16 lcid, UINT16 psm, UINT8 id);
+static void obx_l2c_connect_ind_cback(void *context, wiced_bt_device_address_t bd_addr, uint16_t local_cid, uint16_t peer_mtu);
 
-static void obx_l2c_connect_cfm_cback(UINT16 lcid, UINT16 result);
-
-static void obx_l2c_config_cfm_cback(UINT16 lcid, wiced_bt_l2cap_cfg_information_t *p_cfg);
 static void obx_l2c_config_ind_cback(UINT16 lcid, wiced_bt_l2cap_cfg_information_t *p_cfg);
-static void obx_l2c_disconnect_ind_cback(UINT16 lcid, BOOLEAN ack_needed);
-static void obx_l2c_disconnect_cfm_cback(UINT16 lcid, UINT16 result);
-static void obx_l2c_data_ind_cback(UINT16 lcid, BT_HDR *p_buf);
+static void obx_l2c_disconnect_ind_cback(void *context, UINT16 lcid, BOOLEAN ack_needed);
+static void obx_l2c_disconnect_cfm_cback(void *context, UINT16 lcid, UINT16 result);
+static void obx_l2c_data_ind_cback(void *context, uint16_t lcid, uint8_t *p_buf, uint16_t buf_len);
 static void obx_l2c_congestion_ind_cback(UINT16 lcid, BOOLEAN is_congested);
 static tOBEX_SR_SESS_CB *obx_lcb_2_sr_sess_cb(tOBEX_L2C_CB *p_lcb);
+static void obx_l2c_cl_connect_ind_cback(void *context,wiced_bt_device_address_t bd_addr, UINT16 lcid, UINT16 peer_mtu);
+static void obx_l2c_checks_ch_flags (tOBEX_L2C_CB     *p_lcb);
+static BOOLEAN check_l2c_map();
+#define tL2CAP_ERTM_INFO wiced_bt_l2cap_ertm_information_t
 
-/* L2CAP callback function structure for server */
-const wiced_bt_l2cap_appl_information_t obx_l2c_sr_appl =
-{
-    obx_l2c_connect_ind_cback,      /* tL2CA_CONNECT_IND_CB       */
-    NULL,                           /* tL2CA_CONNECT_CFM_CB       */
-    NULL,                           /* tL2CA_CONNECT_PND_CB       */
-    obx_l2c_config_ind_cback,       /* tL2CA_CONFIG_IND_CB        */
-    obx_l2c_config_cfm_cback,       /* tL2CA_CONFIG_CFM_CB        */
-    obx_l2c_disconnect_ind_cback,   /* tL2CA_DISCONNECT_IND_CB    */
-    obx_l2c_disconnect_cfm_cback,   /* tL2CA_DISCONNECT_CFM_CB    */
-    NULL,                           /* tL2CA_QOS_VIOLATION_IND_CB */
-    obx_l2c_data_ind_cback,         /* tL2CA_DATA_IND_CB          */
-    obx_l2c_congestion_ind_cback,   /* tL2CA_CONGESTION_STATUS_CB */
-    NULL                            /* tL2CA_TX_COMPLETE_CB */
-};
+/* This option is application when OBEX over L2CAP is in use
+Size of the transmission window when using enhanced retransmission mode. Not used
+in basic and streaming modes. Range: 1 - 63
+*/
+#ifndef OBEX_FCR_OPT_TX_WINDOW_SIZE_BR_EDR
+#define OBEX_FCR_OPT_TX_WINDOW_SIZE_BR_EDR       1
+#endif
 
-/* L2CAP callback function structure for client */
-const wiced_bt_l2cap_appl_information_t obx_l2c_cl_appl =
-{
-    NULL,                           /* tL2CA_CONNECT_IND_CB       */
-    obx_l2c_connect_cfm_cback,      /* tL2CA_CONNECT_CFM_CB       */
-    NULL,                           /* tL2CA_CONNECT_PND_CB       */
-    obx_l2c_config_ind_cback,       /* tL2CA_CONFIG_IND_CB        */
-    obx_l2c_config_cfm_cback,       /* tL2CA_CONFIG_CFM_CB        */
-    obx_l2c_disconnect_ind_cback,   /* tL2CA_DISCONNECT_IND_CB    */
-    obx_l2c_disconnect_cfm_cback,   /* tL2CA_DISCONNECT_CFM_CB    */
-    NULL,                           /* tL2CA_QOS_VIOLATION_IND_CB */
-    obx_l2c_data_ind_cback,         /* tL2CA_DATA_IND_CB          */
-    obx_l2c_congestion_ind_cback,   /* tL2CA_CONGESTION_STATUS_CB */
-    NULL                            /* tL2CA_TX_COMPLETE_CB */
-};
+/* This option is application when OBEX over L2CAP is in use
+Number of transmission attempts for a single I-Frame before taking
+Down the connection. Used In ERTM mode only. Value is Ignored in basic and
+Streaming modes.
+Range: 0, 1-0xFF
+0 - infinite retransmissions
+1 - single transmission
+*/
+#ifndef OBEX_FCR_OPT_MAX_TX_B4_DISCNT
+#define OBEX_FCR_OPT_MAX_TX_B4_DISCNT    6
+#endif
+
+/* This option is application when OBEX over L2CAP is in use
+Retransmission Timeout
+Range: Minimum 2000 (2 secs) on BR/EDR when supporting PBF.
+ */
+#ifndef OBEX_FCR_OPT_RETX_TOUT
+#define OBEX_FCR_OPT_RETX_TOUT           2000
+#endif
+
+ /* This option is application when OBEX over L2CAP is in use
+ Monitor Timeout
+ Range: Minimum 12000 (12 secs) on BR/EDR when supporting PBF.
+ */
+#ifndef OBEX_FCR_OPT_MONITOR_TOUT
+#define OBEX_FCR_OPT_MONITOR_TOUT        12000
+#endif
 
 /* OBX eL2CAP default options */
 const wiced_bt_l2cap_fcr_options_t obx_l2c_fcr_opts_def =
@@ -115,8 +121,94 @@ const wiced_bt_l2cap_fcr_options_t obx_l2c_fcr_opts_def =
     OBEX_FCR_OPT_MAX_TX_B4_DISCNT,   /* Maximum transmissions before disconnecting */
     OBEX_FCR_OPT_RETX_TOUT,          /* Retransmission timeout (2 secs) */
     OBEX_FCR_OPT_MONITOR_TOUT,       /* Monitor timeout (12 secs) */
-    L2CAP_DEFAULT_ERM_MPS           /* MPS segment size */
+    L2CAP_DEFAULT_MTU           /* MPS segment size */
 };
+
+wiced_bt_l2cap_appl_information_t obx_l2c_sr_appl =
+{
+    obx_l2c_connect_ind_cback,      /* tL2CA_CONNECT_CFM_CB       */
+    obx_l2c_disconnect_ind_cback,   /* tL2CA_DISCONNECT_IND_CB    */
+    obx_l2c_disconnect_cfm_cback,   /* tL2CA_DISCONNECT_CFM_CB    */
+    obx_l2c_data_ind_cback,         /* tL2CA_DATA_IND_CB          */
+    NULL,                            /* tL2CA_TX_COMPLETE_CB */
+    NULL,
+    L2CAP_DEFAULT_MTU,          /* mtu */
+
+    FALSE,                      /* qos_present */
+    {                           /* QOS configuration: */
+        0,                      /* qos_flags */
+        0,                      /* service_type */
+        0,                      /* token_rate (bytes/second) */
+        0,                      /* token_bucket_size (bytes) */
+        0,                      /* peak_bandwidth (bytes/second) */
+        0,                      /* latency (microseconds) */
+        0                       /* delay_variation (microseconds) */
+    },
+
+    TRUE,                       /* flush_timeout_present */
+    L2CAP_DEFAULT_FLUSH_TO,     /* flush_timeout */
+
+    (L2CAP_FCR_CHAN_OPT_ERTM),                      /* fcr_present */
+    {                           /* FCR config */
+        L2CAP_FCR_ERTM_MODE,            /* Mandatory for Obex over L2CAP */
+        OBEX_FCR_OPT_TX_WINDOW_SIZE_BR_EDR,  /* Tx window size over Bluetooth */
+        OBEX_FCR_OPT_MAX_TX_B4_DISCNT,   /* Maximum transmissions before disconnecting */
+        OBEX_FCR_OPT_RETX_TOUT,          /* Retransmission timeout (2 secs) */
+        OBEX_FCR_OPT_MONITOR_TOUT,       /* Monitor timeout (12 secs) */
+        L2CAP_DEFAULT_MTU           /* MPS segment size */
+    },
+
+    FALSE,                      /* fcs_present */
+    0,                          /* fcs ('0' if desire is to bypass FCS, otherwise '1') */
+
+    FALSE                       /* is_ob_only */
+
+};
+
+
+
+
+    wiced_bt_l2cap_appl_information_t obx_l2c_cl_appl =
+    {
+        obx_l2c_cl_connect_ind_cback,      /* tL2CA_CONNECT_CFM_CB       */
+        obx_l2c_disconnect_ind_cback,   /* tL2CA_DISCONNECT_IND_CB    */
+        obx_l2c_disconnect_cfm_cback,   /* tL2CA_DISCONNECT_CFM_CB    */
+        obx_l2c_data_ind_cback,         /* tL2CA_DATA_IND_CB          */
+        NULL,                            /* tL2CA_TX_COMPLETE_CB */
+    NULL,
+        L2CAP_DEFAULT_MTU,          /* mtu */
+
+        FALSE,                      /* qos_present */
+        {                           /* QOS configuration: */
+            0,                      /* qos_flags */
+            0,                      /* service_type */
+            0,                      /* token_rate (bytes/second) */
+            0,                      /* token_bucket_size (bytes) */
+            0,                      /* peak_bandwidth (bytes/second) */
+            0,                      /* latency (microseconds) */
+            0                       /* delay_variation (microseconds) */
+        },
+
+        TRUE,                       /* flush_timeout_present */
+        L2CAP_DEFAULT_FLUSH_TO,     /* flush_timeout */
+
+        (L2CAP_FCR_CHAN_OPT_ERTM),                      /* fcr_present */
+        {                           /* FCR config */
+        L2CAP_FCR_ERTM_MODE,            /* Mandatory for Obex over L2CAP */
+        OBEX_FCR_OPT_TX_WINDOW_SIZE_BR_EDR,  /* Tx window size over Bluetooth */
+        OBEX_FCR_OPT_MAX_TX_B4_DISCNT,   /* Maximum transmissions before disconnecting */
+        OBEX_FCR_OPT_RETX_TOUT,          /* Retransmission timeout (2 secs) */
+        OBEX_FCR_OPT_MONITOR_TOUT,       /* Monitor timeout (12 secs) */
+        L2CAP_DEFAULT_MTU           /* MPS segment size */
+        },
+
+        FALSE,                      /* fcs_present */
+        0,                          /* fcs ('0' if desire is to bypass FCS, otherwise '1') */
+
+        FALSE                       /* is_ob_only */
+
+    };
+
 
 /*******************************************************************************
 ** Function     obx_l2c_snd_evt
@@ -215,7 +307,7 @@ tOBEX_SR_SESS_CB * obx_sr_scb_by_psm (UINT16 psm)
                         p_scb->ll_cb.l2c.p_close_fn = obx_close_l2c;
                         p_scb->ll_cb.l2c.p_send_fn = (tOBEX_SEND_FN *)obx_l2c_snd_msg;
                         obx_close_port(port_handle);
-                        RFCOMM_RemoveServer(port_handle);
+                        wiced_bt_rfcomm_remove_connection(port_handle, WICED_TRUE);
                         obx_sr_free_scb(p_scbt);
                         break;
                     }
@@ -253,66 +345,73 @@ void obx_sr_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg)
     UINT8 opcode;
     tOBEX_L2C_IND    *p_ind;
     wiced_bt_l2cap_cfg_information_t cfg;
-    UINT16          result = L2CAP_CONN_NO_RESOURCES;
+
 #if (BT_USE_TRACES == TRUE)
     UINT16          len;
 #endif
-    tL2CAP_ERTM_INFO ertm_info;
+
     tOBEX_EVT_PARAM  param;
     tOBEX_SR_CB      *p_cb;
 
+    OBEX_TRACE_DEBUG0("obx sr proc l2c evt");
     if (p_msg == NULL || p_msg->p_l2cb == NULL)
+    {
+        OBEX_TRACE_DEBUG0("p_msg or p_l2cb is null");
         return;
+    }
 
     if (p_msg->l2c_evt == OBEX_L2C_EVT_CONN_IND)
     {
-        memset(&cfg, 0, sizeof(wiced_bt_l2cap_cfg_information_t));
-        cfg.mtu_present = TRUE;
-
+        OBEX_TRACE_DEBUG0("conn ind");
         p_ind = &p_msg->param.conn_ind;
         if (((p_scb = obx_sr_scb_by_psm(p_ind->psm)) != NULL)
             && (obx_sr_cb_by_psm(p_ind->psm) != NULL))
         {
+            OBEX_TRACE_DEBUG0("obx sr proc l2c evt found p_scb");
+            if (check_l2c_map() == WICED_FALSE)
+            {
+                return;
+            }
+
             p_scb->state = OBEX_SS_NOT_CONNECTED;
             memcpy(p_scb->param.conn.peer_addr, p_ind->bd_addr, BD_ADDR_LEN);
             memcpy(p_scb->peer_addr, p_ind->bd_addr, BD_ADDR_LEN);
-            result  = L2CAP_CONN_OK;
             p_lcb   = &p_scb->ll_cb.l2c;
-            cfg.mtu = p_lcb->rx_mtu;
 
-            cfg.fcr_present = TRUE;
-            cfg.fcr         = obx_l2c_fcr_opts_def;
-        }
-        /* else no control channel yet, reject */
-
-        /* Set the FCR options: */
-        ertm_info.preferred_mode  = obx_l2c_fcr_opts_def.mode;
-        ertm_info.allowed_modes = L2CAP_FCR_CHAN_OPT_ERTM;
-        ertm_info.user_rx_pool_id = OBEX_USER_RX_POOL_ID;
-        ertm_info.user_tx_pool_id = OBEX_USER_TX_POOL_ID;
-        ertm_info.fcr_rx_pool_id =  OBEX_FCR_RX_POOL_ID;
-        ertm_info.fcr_tx_pool_id =  OBEX_FCR_TX_POOL_ID;
-
-        /* Send L2CAP connect rsp */
-        L2CA_CONNECT_RSP(p_ind->bd_addr, p_ind->id, p_ind->lcid, result, 0, &ertm_info);
-
-        /* if result ok, proceed with connection */
-        if (result == L2CAP_CONN_OK)
-        {
             /* store LCID */
             p_lcb->lcid = p_ind->lcid;
-            obx_cb.l2c_map[p_ind->lcid - L2CAP_BASE_APPL_CID] = p_lcb->handle;
-            OBEX_TRACE_DEBUG2("l2c_map[%d]=0x%x\n",p_ind->lcid - L2CAP_BASE_APPL_CID, p_lcb->handle );
+
+            obx_cb.l2c_map[(p_ind->lcid - L2CAP_BASE_APPL_CID) % MAX_L2CAP_CHANNELS] = p_lcb->handle;
+            OBEX_TRACE_DEBUG2("l2c_map[%d]=0x%x\n", (p_ind->lcid - L2CAP_BASE_APPL_CID) % MAX_L2CAP_CHANNELS, p_lcb->handle );
 
             /* transition to configuration state */
             p_lcb->ch_state = OBEX_CH_CFG;
-            p_lcb->ch_flags = OBEX_L2C_SECURITY_DONE;
 
-            /* Send L2CAP config req */
-            L2CA_CONFIG_REQ(p_ind->lcid, &cfg);
+
+            if ((p_lcb->ch_flags & OBEX_L2C_CFG_IND_DONE) == 0)
+            {
+                /* update flags */
+                p_lcb->ch_flags |= OBEX_L2C_CFG_IND_DONE;
+            }
+
+            //cfg_cfm
+            if (p_lcb->ch_state == OBEX_CH_CFG)
+            {
+                p_lcb->ch_flags |= OBEX_L2C_CFG_CFM_DONE;
+            }
+
+            p_lcb->ch_flags |= OBEX_L2C_SECURITY_DONE;
+            obx_l2c_checks_ch_flags(p_lcb);
+
+
+        }
+        else
+        {
+            OBEX_TRACE_DEBUG0("scb or something is null");
         }
         return;
     }
+
 
     p_lcb = p_msg->p_l2cb;
     p_scb = obx_lcb_2_sr_sess_cb(p_lcb);
@@ -324,7 +423,7 @@ void obx_sr_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg)
     case OBEX_L2C_EVT_RESUME:
         p_cb = &obx_cb.server[p_scb->handle - 1];
         param.ssn = p_scb->ssn;
-        (p_cb->p_cback) (p_scb->ll_cb.comm.handle, OBEX_GET_REQ_EVT, param, p_pkt);
+        (p_cb->p_cback) (p_scb->ll_cb.comm.handle, OBEX_GET_REQ_EVT, param, (uint8_t *)p_pkt);
         break;
 
     case OBEX_L2C_EVT_CONG:
@@ -374,7 +473,7 @@ void obx_sr_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg)
                 if (p_lcb->rx_q.count > obx_cb.max_rx_qcount)
                 {
                     p_lcb->stopped = TRUE;
-                    L2CA_FlowControl(p_lcb->lcid, FALSE);
+                    wiced_bt_l2cap_flow_control(p_lcb->lcid, FALSE);
                 }
                 OBEX_TRACE_DEBUG4 ("obx_sr_proc_l2c_evt stopped:%d state:%d rx_q.count:%d, srm:0x%x\n",
                     p_lcb->stopped, p_scb->state, p_lcb->rx_q.count, p_scb->srm );
@@ -398,14 +497,23 @@ void obx_sr_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg)
 ** Returns          void
 **
 *******************************************************************************/
+UINT16 sr_st=0, sr_psm = 0;
+
 tOBEX_STATUS obx_l2c_sr_register (tOBEX_SR_CB  *p_cb)
 {
     tOBEX_STATUS     status = OBEX_NO_RESOURCES;
 
-    if (L2CA_REGISTER (p_cb->psm, &obx_l2c_sr_appl))
+    OBEX_TRACE_DEBUG1("obx_l2c_sr_register %d", p_cb->psm);
+
+    p_cb->psm = wiced_bt_l2cap_register (p_cb->psm, &obx_l2c_sr_appl, NULL);
+
+    if (p_cb->psm != 0)
     {
         status = OBEX_SUCCESS;
+        sr_psm = p_cb->psm;
     }
+
+    wiced_bt_l2cap_ertm_enable();
     return status;
 }
 
@@ -492,8 +600,8 @@ tOBEX_L2C_CB * obx_lcid_2lcb(UINT16 lcid)
 
     /* this function is called by obx_rfc_cback() only.
      * assume that port_handle is within range */
-    obx_handle  = obx_cb.l2c_map[lcid-L2CAP_BASE_APPL_CID];
-    obx_mskd_handle = obx_handle&OBEX_HANDLE_MASK;
+    obx_handle  = obx_cb.l2c_map[(lcid-L2CAP_BASE_APPL_CID)% MAX_L2CAP_CHANNELS];
+    obx_mskd_handle = obx_handle & OBEX_HANDLE_MASK;
     OBEX_TRACE_DEBUG3("obx_lcid_2lcb lcid:0x%x obx_handle:0x%x obx_mskd_handle:0x%x\n",
         lcid, obx_handle, obx_mskd_handle);
 
@@ -551,15 +659,16 @@ static void obx_l2c_checks_ch_flags (tOBEX_L2C_CB     *p_lcb)
 ** Returns          void
 **
 *******************************************************************************/
-static void obx_l2c_connect_ind_cback(BD_ADDR bd_addr, UINT16 lcid, UINT16 psm, UINT8 id)
+static void obx_l2c_connect_ind_cback(void *context, wiced_bt_device_address_t bd_addr, uint16_t local_cid, uint16_t peer_mtu)
+
 {
     tOBEX_L2C_EVT_PARAM  evt_param;
-
+    OBEX_TRACE_DEBUG3("obx l2c sr connect ind event lcid %d mtu %d srpsm %d", local_cid, peer_mtu, sr_psm);
     obx_cb.sr_l2cb.handle = 0; /* to mark as server event */
     memcpy( evt_param.conn_ind.bd_addr, bd_addr, BD_ADDR_LEN);
-    evt_param.conn_ind.lcid = lcid;
-    evt_param.conn_ind.psm  = psm;
-    evt_param.conn_ind.id   = id;
+    evt_param.conn_ind.lcid = local_cid;
+    evt_param.conn_ind.psm  = sr_psm;
+    evt_param.conn_ind.id   = 0;
     obx_l2c_snd_evt (&obx_cb.sr_l2cb, evt_param, OBEX_L2C_EVT_CONN_IND);
 }
 
@@ -582,6 +691,7 @@ void obx_cl_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg)
     tOBEX_RX_HDR *p_rxh;
     UINT8 opcode;
 
+    OBEX_TRACE_DEBUG0("obx cl proc l2c evt");
     if (p_msg == NULL || p_msg->p_l2cb == NULL)
         return;
 
@@ -608,7 +718,7 @@ void obx_cl_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg)
         memset(p_rxh, 0, sizeof(tOBEX_RX_HDR));
         obx_verify_response (opcode, p_rxh);
 
-        OBEX_TRACE_DEBUG4 ("obx_cl_proc_l2c_evt event:0x%x/0x%x state:%d srm:0x%x\n", p_pkt->event, p_rxh->sm_evt, p_cl_cb->state, p_cl_cb->srm );
+        OBEX_TRACE_DEBUG0 ("obx_cl_proc_l2c_evt event:0x%x/0x%x state:%d srm:0x%x\n", p_pkt->event, p_rxh->sm_evt, p_cl_cb->state, p_cl_cb->srm );
         if (p_rxh->sm_evt != OBEX_BAD_SM_EVT)
         {
             if (GKI_queue_is_empty(&p_l2cb->rx_q) && (p_cl_cb->srm & OBEX_SRM_WAIT_UL) == 0)
@@ -621,7 +731,8 @@ void obx_cl_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg)
                 if (p_l2cb->rx_q.count > obx_cb.max_rx_qcount)
                 {
                     p_l2cb->stopped = TRUE;
-                    L2CA_FlowControl(p_l2cb->lcid, FALSE);
+                    wiced_bt_l2cap_flow_control(p_l2cb->lcid, FALSE);
+                    OBEX_TRACE_DEBUG3("l2c flow control false for l2c channel %d", p_l2cb->lcid);
                 }
                 OBEX_TRACE_DEBUG3 ("obx_cl_proc_l2c_evt rx_q.count:%d, stopped:%d state:%d\n", p_l2cb->rx_q.count, p_l2cb->stopped, p_cl_cb->state );
             }
@@ -653,7 +764,7 @@ static void obx_l2c_sec_check_complete (BD_ADDR bd_addr, BOOLEAN transport, void
     if (p_lcb->ch_state == OBEX_CH_IDLE)
         return;
 
-    if (res == BTM_SUCCESS)
+    if (res == OBEX_SUCCESS)
     {
         p_lcb->ch_flags |= OBEX_L2C_SECURITY_DONE;
         obx_l2c_checks_ch_flags (p_lcb);
@@ -661,107 +772,54 @@ static void obx_l2c_sec_check_complete (BD_ADDR bd_addr, BOOLEAN transport, void
     else
     {
         /* security failed - disconnect the channel */
-        L2CA_DISCONNECT_REQ (p_lcb->lcid);
+        wiced_bt_l2cap_disconnect_req (p_lcb->lcid);
     }
 }
 
-/*******************************************************************************
-**
-** Function         obx_l2c_connect_cfm_cback
-**
-** Description      This is the L2CAP connect confirm callback function.
-**
-**
-** Returns          void
-**
-*******************************************************************************/
-static void obx_l2c_connect_cfm_cback(UINT16 lcid, UINT16 result)
+static void obx_l2c_cl_connect_ind_cback(void *context, wiced_bt_device_address_t bd_addr, UINT16 lcid, UINT16 peer_mtu)
 {
-    tOBEX_L2C_CB     *p_lcb;
-    wiced_bt_l2cap_cfg_information_t cfg;
-    tOBEX_L2C_EVT_PARAM  evt_param;
-    tOBEX_CL_CB *p_cl_cb = NULL;
+
+    tOBEX_L2C_CB* p_lcb;
+    BOOL32 status;
+    OBEX_TRACE_DEBUG2("obx_l2c_cl_connect_ind_cback lcid %d mtu %d", lcid, peer_mtu);
 
     /* look up lcb for this channel */
-    if ((p_lcb = obx_lcid_2lcb(lcid)) != NULL)
+    OBEX_TRACE_DEBUG0("finding lcid match");
+    if ((p_lcb = obx_lcid_2lcb(lcid)) == NULL)
     {
-        OBEX_TRACE_DEBUG1("obx_l2c_connect_cfm_cback ch_state:%d\n", p_lcb->ch_state);
-        /* if in correct state */
-        if (p_lcb->ch_state == OBEX_CH_CONN)
-        {
-            /* if result successful */
-            if (result == L2CAP_CONN_OK)
-            {
-                /* set channel state */
-                p_lcb->ch_state = OBEX_CH_CFG;
-
-                p_cl_cb = obx_lcb_2_clcb(p_lcb);
-                btm_sec_mx_access_request (p_cl_cb->peer_addr, p_cl_cb->psm, TRUE,
-                                           0, 0, &obx_l2c_sec_check_complete, p_lcb);
-
-                /* Send L2CAP config req */
-                memset(&cfg, 0, sizeof(wiced_bt_l2cap_cfg_information_t));
-
-                cfg.mtu_present = TRUE;
-                cfg.mtu = p_lcb->rx_mtu;
-
-                cfg.fcr_present  = TRUE;
-                cfg.fcr          = obx_l2c_fcr_opts_def;
-
-                L2CA_CONFIG_REQ(lcid, &cfg);
-            }
-            /* else failure */
-            else
-            {
-                evt_param.any = 0;
-                obx_l2c_snd_evt (p_lcb, evt_param, OBEX_L2C_EVT_CLOSE);
-            }
-        }
+        OBEX_TRACE_DEBUG0("obx_l2c_cl_connect_ind_cback , p_lcb null");
+        return;
     }
+    OBEX_TRACE_DEBUG0("lcb is okay");
+    //connect_cfm
+    OBEX_TRACE_DEBUG1("obx_l2c_connect_ind_cback ch_state:%d", p_lcb->ch_state);
+    /* if in correct state */
+    if (p_lcb->ch_state == OBEX_CH_CONN)
+    {
+        /* set channel state */
+        p_lcb->ch_state = OBEX_CH_CFG;
+    }
+
+    //cfg_ind
+    if ((p_lcb->ch_flags & OBEX_L2C_CFG_IND_DONE) == 0)
+    {
+        /* update flags */
+        p_lcb->ch_flags |= OBEX_L2C_CFG_IND_DONE;
+    }
+
+    //cfg_cfm
+    if (p_lcb->ch_state == OBEX_CH_CFG)
+    {
+        p_lcb->ch_flags |= OBEX_L2C_CFG_CFM_DONE;
+    }
+
+    p_lcb->ch_flags |= OBEX_L2C_SECURITY_DONE;
+    obx_l2c_checks_ch_flags(p_lcb);
+
+
 }
 
 
-/*******************************************************************************
-**
-** Function         obx_l2c_config_cfm_cback
-**
-** Description      This is the L2CAP config confirm callback function.
-**
-**
-** Returns          void
-**
-*******************************************************************************/
-static void obx_l2c_config_cfm_cback(UINT16 lcid, wiced_bt_l2cap_cfg_information_t *p_cfg)
-{
-    tOBEX_L2C_CB     *p_lcb;
-
-    /* look up lcb for this channel */
-    if ((p_lcb = obx_lcid_2lcb(lcid)) != NULL)
-    {
-        /* if in correct state */
-        if (p_lcb->ch_state == OBEX_CH_CFG)
-        {
-            /* if result successful */
-            if (p_cfg->result == L2CAP_CFG_OK)
-            {
-                /* update flags */
-                p_lcb->ch_flags |= OBEX_L2C_CFG_CFM_DONE;
-
-                /* if configuration complete */
-                obx_l2c_checks_ch_flags(p_lcb);
-            }
-            /* else failure */
-            else
-            {
-                /* store result value
-                p_lcb->ch_result = p_cfg->result; */
-
-                /* Send L2CAP disconnect req */
-                L2CA_DISCONNECT_REQ(lcid);
-            }
-        }
-    }
-}
 
 /*******************************************************************************
 **
@@ -778,11 +836,6 @@ static void obx_l2c_config_ind_cback(UINT16 lcid, wiced_bt_l2cap_cfg_information
     tOBEX_L2C_CB     *p_lcb;
     UINT16          max_mtu = OBEX_MAX_MTU;
 
-    /* Don't include QoS nor flush timeout in the response since we
-       currently always accept these values.  Note: fcr_present is left
-       untouched since l2cap negotiates this internally
-    */
-    p_cfg->flush_to_present = FALSE;
     p_cfg->qos_present = FALSE;
 
     /* look up lcb for this channel */
@@ -811,8 +864,6 @@ static void obx_l2c_config_ind_cback(UINT16 lcid, wiced_bt_l2cap_cfg_information
 
         p_cfg->result = L2CAP_CFG_OK;
 
-        /* send L2CAP configure response */
-        L2CA_CONFIG_RSP(lcid, p_cfg);
 
         if (p_cfg->result != L2CAP_CFG_OK)
         {
@@ -841,22 +892,25 @@ static void obx_l2c_config_ind_cback(UINT16 lcid, wiced_bt_l2cap_cfg_information
 ** Returns          void
 **
 *******************************************************************************/
-static void obx_l2c_disconnect_ind_cback(UINT16 lcid, BOOLEAN ack_needed)
+static void obx_l2c_disconnect_ind_cback(void *context, UINT16 lcid, BOOLEAN ack_needed)
 {
     tOBEX_L2C_CB     *p_lcb;
     tOBEX_L2C_EVT_PARAM  evt_param;
-
+    OBEX_TRACE_DEBUG1("disconnect ind cback lcid %d", lcid);
+    OBEX_TRACE_DEBUG2("sr st is %d sr pcm is %d", sr_st, sr_psm);
     /* look up lcb for this channel */
     if ((p_lcb = obx_lcid_2lcb(lcid)) != NULL)
     {
         if (ack_needed)
         {
             /* send L2CAP disconnect response */
-            L2CA_DISCONNECT_RSP(lcid);
+        wiced_bt_l2cap_disconnect_rsp(lcid);
         }
 
         evt_param.any = 0;
         obx_l2c_snd_evt (p_lcb, evt_param, OBEX_L2C_EVT_CLOSE);
+        if ((p_lcb->handle & OBEX_CL_HANDLE_MASK)  == 0)
+            obx_cb.l2c_map[(lcid - L2CAP_BASE_APPL_CID) % MAX_L2CAP_CHANNELS] = 0;
     }
 }
 
@@ -870,11 +924,11 @@ static void obx_l2c_disconnect_ind_cback(UINT16 lcid, BOOLEAN ack_needed)
 ** Returns          void
 **
 *******************************************************************************/
-static void obx_l2c_disconnect_cfm_cback(UINT16 lcid, UINT16 result)
+static void obx_l2c_disconnect_cfm_cback(void *context, UINT16 lcid, UINT16 result)
 {
     tOBEX_L2C_CB     *p_lcb;
     tOBEX_L2C_EVT_PARAM  evt_param;
-
+    OBEX_TRACE_DEBUG3("disconnect cfm cback lcid %d", lcid);
     /* look up lcb for this channel */
     if ((p_lcb = obx_lcid_2lcb(lcid)) != NULL)
     {
@@ -893,29 +947,48 @@ static void obx_l2c_disconnect_cfm_cback(UINT16 lcid, UINT16 result)
 ** Returns          void
 **
 *******************************************************************************/
-static void obx_l2c_data_ind_cback(UINT16 lcid, BT_HDR *p_buf)
+
+static void obx_l2c_data_ind_cback(void *context, uint16_t lcid, uint8_t *p_buf, uint16_t buf_len)
 {
     tOBEX_L2C_CB     *p_lcb;
     tOBEX_L2C_EVT_PARAM  evt_param;
+    BT_HDR *hdr = NULL;
+    UINT8 *p;
 #if (BT_USE_TRACES == TRUE)
     UINT16          len;
 #endif
+    OBEX_TRACE_DEBUG2("data ind cback hdr created lcid %d len %d", lcid, buf_len);
 
+    hdr = (BT_HDR *)GKI_getpoolbuf(HCI_ACL_POOL_ID);
+    if (hdr == NULL)
+    {
+        OBEX_TRACE_DEBUG0("No free buffer available !! Dropping data");
+        return;
+    }
+    memset(hdr,0,GKI_get_pool_bufsize(HCI_ACL_POOL_ID));
     /* look up lcb for this channel */
     if ((p_lcb = obx_lcid_2lcb(lcid)) != NULL)
     {
-        evt_param.p_pkt = p_buf;
-        OBEX_TRACE_DEBUG3("obx_l2c_data_ind_cback 0x%x, len:%d, offset:%d\n", p_buf, p_buf->len, p_buf->offset );
+        hdr->len = buf_len;
+        hdr->offset = sizeof(tOBEX_RX_HDR);
+        p = (UINT8 *)hdr;
+        p += sizeof(BT_HDR) + sizeof(tOBEX_RX_HDR);
+        memcpy(p, p_buf, buf_len);
+        evt_param.p_pkt = hdr;
+        OBEX_TRACE_DEBUG2("obx_l2c_data_ind_cback 0x%x, len:%d\n", p_buf, buf_len);
 #if (BT_USE_TRACES == TRUE)
-        len = p_buf->len;
+        len = buf_len;
         if (len > 0x20)
             len = 0x20;
-        obxu_dump_hex ((UINT8 *)(p_buf + 1) + p_buf->offset, "rsp cback", len);
+        obxu_dump_hex ((UINT8 *)(p_buf + 1), "rsp cback", len);
 #endif
         obx_l2c_snd_evt (p_lcb, evt_param, OBEX_L2C_EVT_DATA_IND);
     }
     else /* prevent buffer leak */
-        GKI_freebuf(p_buf);
+    {
+        OBEX_TRACE_DEBUG0("p_lcb is NULL, dropping the pkt");
+    }
+
 }
 
 
@@ -950,7 +1023,8 @@ static void obx_l2c_congestion_ind_cback(UINT16 lcid, BOOLEAN is_congested)
 *******************************************************************************/
 void obx_register_l2c(tOBEX_CL_CB *p_cl_cb, UINT16 psm)
 {
-    p_cl_cb->psm = L2CA_REGISTER (psm, &obx_l2c_cl_appl);
+    OBEX_TRACE_DEBUG3("obx_register_l2c - assigned fcr values psm %d fcr modes1 %d", psm, obx_l2c_cl_appl.fcr_present);
+    p_cl_cb->psm = wiced_bt_l2cap_register (psm, &obx_l2c_cl_appl, NULL);
 }
 
 /*******************************************************************************
@@ -965,9 +1039,16 @@ tOBEX_STATUS obx_open_l2c(tOBEX_CL_CB *p_cl_cb, const BD_ADDR bd_addr)
     UINT16      max_mtu = OBEX_MAX_MTU;
     wiced_bt_l2cap_cfg_information_t cfg;
     tL2CAP_ERTM_INFO ertm_info;
-
     OBEX_TRACE_DEBUG2("obx_open_l2c rxmtu:%d, cbmtu:%d\n", p_l2cb->rx_mtu, max_mtu );
 
+
+    if (check_l2c_map() == WICED_FALSE)
+    {
+        return OBEX_NO_RESOURCES;
+    }
+
+    wiced_bt_l2cap_ertm_enable();
+    OBEX_TRACE_DEBUG0("Enabled ertm");
     /* clear buffers from previous connection */
     obx_free_buf(&p_cl_cb->ll_cb);
 
@@ -982,13 +1063,14 @@ tOBEX_STATUS obx_open_l2c(tOBEX_CL_CB *p_cl_cb, const BD_ADDR bd_addr)
         memcpy (p_cl_cb->peer_addr, bd_addr, BD_ADDR_LEN);
 
         /* Set the FCR options: */
-        ertm_info.preferred_mode  = obx_l2c_fcr_opts_def.mode;
+        ertm_info.preferred_mode  = L2CAP_FCR_ERTM_MODE;
         ertm_info.allowed_modes = L2CAP_FCR_CHAN_OPT_ERTM;
-        ertm_info.user_rx_pool_id = OBEX_USER_RX_POOL_ID;
-        ertm_info.user_tx_pool_id = OBEX_USER_TX_POOL_ID;
-        ertm_info.fcr_rx_pool_id =  OBEX_FCR_RX_POOL_ID;
-        ertm_info.fcr_tx_pool_id =  OBEX_FCR_TX_POOL_ID;
-        p_l2cb->lcid = L2CA_CONNECT_REQ (p_cl_cb->psm, (BD_ADDR_PTR)bd_addr, &ertm_info);
+        ertm_info.user_rx_pool_id = 0xff;//OBEX_USER_RX_POOL_ID;
+        ertm_info.user_tx_pool_id = 0xff;//OBEX_USER_TX_POOL_ID;
+        ertm_info.fcr_rx_pool_id =  0xff;//OBEX_FCR_RX_POOL_ID;
+        ertm_info.fcr_tx_pool_id =  0xff;//OBEX_FCR_TX_POOL_ID;
+        OBEX_TRACE_DEBUG0("l2cap connect requ basic and ertm changed pool ids");
+        p_l2cb->lcid = wiced_bt_l2cap_ertm_connect_req (p_cl_cb->psm, (BD_ADDR_PTR)bd_addr, &ertm_info);
 
         if (p_l2cb->lcid)
         {
@@ -1007,7 +1089,7 @@ tOBEX_STATUS obx_open_l2c(tOBEX_CL_CB *p_cl_cb, const BD_ADDR bd_addr)
 
     if (status == OBEX_SUCCESS)
     {
-        obx_cb.l2c_map[p_l2cb->lcid - L2CAP_BASE_APPL_CID] = p_l2cb->handle;
+        obx_cb.l2c_map[(p_l2cb->lcid - L2CAP_BASE_APPL_CID)% MAX_L2CAP_CHANNELS] = p_l2cb->handle;
         p_l2cb->p_send_fn = (tOBEX_SEND_FN *)obx_l2c_snd_msg;
         p_l2cb->p_close_fn = obx_close_l2c;
     }
@@ -1027,7 +1109,7 @@ tOBEX_STATUS obx_open_l2c(tOBEX_CL_CB *p_cl_cb, const BD_ADDR bd_addr)
 *******************************************************************************/
 void obx_close_l2c(UINT16 lcid)
 {
-    L2CA_DISCONNECT_REQ (lcid);
+    wiced_bt_l2cap_disconnect_req (lcid);
 }
 
 /*******************************************************************************
@@ -1038,26 +1120,52 @@ void obx_close_l2c(UINT16 lcid)
 **              sent, adjust the BT_HDR for PART state.
 ** Returns      TRUE if all data is sent
 *******************************************************************************/
-BOOLEAN obx_l2c_snd_msg(tOBEX_L2C_CB *p_l2cb)
+BOOLEAN obx_l2c_snd_msg(tOBEX_LL_CB *p_l2cb)
 {
     BOOLEAN sent = FALSE;
-
-    if (!p_l2cb->cong)
+    OBEX_TRACE_DEBUG0("l2c send msg ll_cb using ptr +8");
+    if (!p_l2cb->l2c.cong)
     {
-        OBEX_TRACE_DEBUG2("obx_l2c_snd_msg len:%d, offset:0x%x\n", p_l2cb->p_txmsg->len, p_l2cb->p_txmsg->offset);
+        OBEX_TRACE_DEBUG2("obx_l2c_snd_msg len:%d, offset:0x%x\n", p_l2cb->comm.p_txmsg->len, p_l2cb->comm.p_txmsg->offset);
+        UINT8* p = (UINT8*)((UINT8*)p_l2cb->comm.p_txmsg + p_l2cb->comm.p_txmsg->offset+8);
 
-        obx_stop_timer(&p_l2cb->tle);
-        if (L2CA_DATA_WRITE (p_l2cb->lcid, p_l2cb->p_txmsg) == L2CAP_DW_CONGESTED)
+        obx_stop_timer(&p_l2cb->l2c.tle);
+        if (wiced_bt_l2cap_data_write (p_l2cb->l2c.lcid, p, p_l2cb->comm.p_txmsg->len, L2CAP_FLUSHABLE_PACKET) == L2CAP_DATAWRITE_CONGESTED)
         {
             OBEX_TRACE_DEBUG0("obx_l2c_snd_msg congested\n");
-            p_l2cb->cong = TRUE;
+            p_l2cb->l2c.cong = TRUE;
         }
-        obx_start_timer ((tOBEX_COMM_CB *)p_l2cb);
-        p_l2cb->p_txmsg = NULL;
+        obx_start_timer ((tOBEX_COMM_CB *)(p_l2cb));
+        OBEX_TRACE_DEBUG0("obx_l2c_snd_msg freeing data after write\n");
+        GKI_freebuf(p_l2cb->comm.p_txmsg);
+        p_l2cb->comm.p_txmsg = NULL;
+        p_l2cb->l2c.p_txmsg = NULL;
         sent = TRUE;
     }
 
     return sent;
+}
+
+static BOOLEAN check_l2c_map()
+{
+    uint8_t ind = 0;
+    for (ind = 0; ind < MAX_L2CAP_CHANNELS; ind++)
+    {
+        if (obx_cb.l2c_map[ind] == 0)
+        {
+            break;
+        }
+    }
+    OBEX_TRACE_DEBUG0("check_l2c_map ind is %d", ind);
+    if (ind == MAX_L2CAP_CHANNELS)
+    {
+        OBEX_TRACE_ERROR0("no l2c_map slots available\n");
+        return WICED_FALSE;
+    }
+    else
+    {
+        return WICED_TRUE;
+    }
 }
 
 #endif  /* OBEX_LIB_L2CAP_INCLUDED */

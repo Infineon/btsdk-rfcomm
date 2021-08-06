@@ -42,9 +42,11 @@
 
 #include <string.h>
 
+#include "obx_int.h"
 #include "wiced.h"
 #include "wiced_bt_sdp_defs.h"
 #include "wiced_bt_mce_int.h"
+#include "wiced_bt_l2c.h"
 
 /*****************************************************************************
 **  Constants
@@ -101,13 +103,8 @@ void wiced_mce_ma_init_sdp(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_dat
     wiced_bt_uuid_t     uuid_list;
     wiced_mce_ma_cb_t   *p_ccb = WICED_MCE_GET_MA_CB_PTR(ccb_idx);
     wiced_mce_inst_cb_t *p_icb = WICED_MCE_GET_MA_INST_CB_PTR(ccb_idx, icb_idx);
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
     UINT16              attr_list[8];
     UINT16              num_attrs = 8;
-#else
-    UINT16              attr_list[7];
-    UINT16              num_attrs = 7;
-#endif
 
     APPL_TRACE_EVENT0("wiced_mce_ma_init_sdp\n");
 
@@ -136,9 +133,7 @@ void wiced_mce_ma_init_sdp(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_dat
                 attr_list[5] = ATTR_ID_SUPPORTED_MSG_TYPE;
                 /* always search peer features */
                 attr_list[6] = ATTR_ID_SUPPORTED_FEATURES_32;
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
                 attr_list[7] = ATTR_ID_OBX_OVR_L2CAP_PSM;
-#endif
 
                 uuid_list.len = LEN_UUID_16;
                 uuid_list.uu.uuid16 = UUID_SERVCLASS_MESSAGE_ACCESS;
@@ -210,11 +205,10 @@ void wiced_mce_ma_start_client(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p
     BOOLEAN             send_close_evt = TRUE;
     wiced_mce_obx_evt_t obx_evt;
 
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
-    tOBX_STATUS         status;
+    tOBEX_STATUS         status;
     BOOLEAN             use_srm = TRUE; /* Always allow if OBEX/L2CAP */
 
-    APPL_TRACE_EVENT0("wiced_mce_ma_start_client\n");
+    APPL_TRACE_EVENT0("wiced_mce_ma_start_client l2cap\n");
 
     /* save peer supported features */
     p_icb->mce_peer_features = p_data->sdp_result.peer_features;
@@ -222,7 +216,7 @@ void wiced_mce_ma_start_client(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p
     p_ccb->sdp_pending = FALSE;
 
     /* Allocate an OBX packet */
-    if ((p_obx->p_pkt = (BT_HDR *)(BT_HDR  *)wiced_bt_obex_header_init(OBX_HANDLE_NULL, OBX_MAX_MTU)) != NULL)
+    if ((p_obx->p_pkt = (BT_HDR *)(BT_HDR  *)wiced_bt_obex_header_init(OBEX_HANDLE_NULL, OBEX_MAX_MTU)) != NULL)
     {
         status = wiced_bt_obex_alloc_session (NULL, p_data->sdp_result.scn, &p_data->sdp_result.psm,
                               wiced_mce_ma_obx_cback, &p_icb->obx_handle);
@@ -233,39 +227,20 @@ void wiced_mce_ma_start_client(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p
             use_srm = FALSE;
         }
 
-        if (status == OBX_SUCCESS)
+        if (status == OBEX_SUCCESS)
         {
-            wiced_bt_obex_add_header((uint8_t *)p_obx->p_pkt, OBEX_HI_TARGET, (UINT8 *)BTA_MAS_MESSAGE_ACCESS_TARGET_UUID,
-                             BTA_MAS_UUID_LENGTH);
+            wiced_bt_obex_add_header((uint8_t *)p_obx->p_pkt, OBEX_HI_TARGET, (UINT8 *)WICED_MAS_MESSAGE_ACCESS_TARGET_UUID,
+			WICED_MAS_UUID_LENGTH);
 
-            if ((wiced_bt_obex_create_session (p_ccb->bd_addr, OBX_MAX_MTU, use_srm, 0,
-                               p_icb->obx_handle, p_obx->p_pkt)) == OBX_SUCCESS)
+            if ((wiced_bt_obex_create_session (p_ccb->bd_addr, OBEX_MAX_MTU, use_srm, 0,
+                               p_icb->obx_handle, (uint8_t *)p_obx->p_pkt)) == OBEX_SUCCESS)
             {
                 p_obx->p_pkt = NULL;    /* OBX will free the memory */
                 send_close_evt = FALSE;
             }
         }
     }
-#else
 
-    APPL_TRACE_EVENT0("wiced_mce_ma_start_client\n");
-
-    p_ccb->sdp_pending = FALSE;
-
-    /* Allocate an OBX packet */
-    if ((p_obx->p_pkt = (BT_HDR *)(BT_HDR  *)wiced_bt_obex_header_init(OBEX_HANDLE_NULL, OBX_CMD_POOL_SIZE)) != NULL)
-    {
-        wiced_bt_obex_add_header((uint8_t *)p_obx->p_pkt, OBEX_HI_TARGET, (UINT8 *)WICED_MAS_MESSAGE_ACCESS_TARGET_UUID,
-                         WICED_MAS_UUID_LENGTH);
-
-        if (wiced_bt_obex_connect(p_ccb->bd_addr, p_data->sdp_result.scn, OBEX_MAX_MTU,
-                           wiced_mce_ma_obx_cback, &p_icb->obx_handle, (uint8_t *)p_obx->p_pkt) == OBEX_SUCCESS)
-        {
-            p_obx->p_pkt = NULL;    /* OBX will free the memory */
-            send_close_evt = FALSE;
-        }
-    }
-#endif  /* BTA_MAP_1_2_SUPPORTED */
 
     if (send_close_evt)
     {
@@ -482,8 +457,9 @@ void wiced_mce_ma_push_msg(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_dat
     wiced_bt_mce_push_msg_t     app_evt;
     UINT8                       *p, *p_start;
     UINT16                      len = 0;
+    wiced_bool_t                add_header = (p_icb->first_push_msg || final);
 
-    APPL_TRACE_EVENT0("wiced_mce_ma_push_msg\n");
+    APPL_TRACE_EVENT0("wiced_mce_ma_push_msg final %d\n", final);
 
     if (p_icb->obx_oper == WICED_MCE_OP_NONE)
     {
@@ -491,41 +467,46 @@ void wiced_mce_ma_push_msg(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_dat
         {
             p_obx->offset = 0;
 
-            /* add type header */
-            p = (UINT8 *)WICED_BT_MA_HDR_TYPE_MSG;
-            wiced_bt_obex_add_header((uint8_t *)p_obx->p_pkt, OBEX_HI_TYPE, p, strlen((char *)p) + 1);
+            if (add_header)
+            {
+                /* add type header */
+                p = (UINT8 *)WICED_BT_MA_HDR_TYPE_MSG;
+                wiced_bt_obex_add_header((uint8_t *)p_obx->p_pkt, OBEX_HI_TYPE, p, strlen((char *)p) + 1);
+            }
 
             /* add name header */
-            if (!wiced_bt_obex_add_header_utf8((UINT8 *)p_obx->p_pkt, OBEX_HI_NAME, (UINT8 *)p_param->p_folder))
+            if ( add_header && !wiced_bt_obex_add_header_utf8((UINT8 *)p_obx->p_pkt, OBEX_HI_NAME, (UINT8 *)p_param->p_folder))
             {
                 utl_freebuf((void**)&p_obx->p_pkt);
             }
             else
             {
                 /* add application header */
-                p_start = wiced_bt_obex_add_byte_sequence_start((uint8_t *)p_obx->p_pkt, &len);
-                p = p_start;
-
-                *p ++ = WICED_BT_MA_APH_CHARSET;
-                *p ++ = 1;
-                *p ++ = p_param->charset ;
-
-                if (p_param->transparent != WICED_BT_MA_TRANSP_UNKNOWN)
+                if (add_header)
                 {
-                    *p ++ = WICED_BT_MA_APH_TRANSPARENT;
+                    p_start = wiced_bt_obex_add_byte_sequence_start((uint8_t *)p_obx->p_pkt, &len);
+                    p = p_start;
+
+                    *p ++ = WICED_BT_MA_APH_CHARSET;
                     *p ++ = 1;
-                    *p ++ = p_param->transparent;
+                    *p ++ = p_param->charset ;
+
+                    if (p_param->transparent != WICED_BT_MA_TRANSP_UNKNOWN)
+                    {
+                        *p ++ = WICED_BT_MA_APH_TRANSPARENT;
+                        *p ++ = 1;
+                        *p ++ = p_param->transparent;
+                    }
+
+                    if (p_param->retry != WICED_BT_MA_RETRY_UNKNOWN)
+                    {
+                        *p ++ = WICED_BT_MA_APH_RETRY;
+                        *p ++ = 1;
+                        *p ++ = p_param->retry;
+                    }
+
+                    wiced_bt_obex_add_byte_sequence_end((uint8_t *)p_obx->p_pkt, OBEX_HI_APP_PARMS, (UINT16)(p - p_start));
                 }
-
-                if (p_param->retry != WICED_BT_MA_RETRY_UNKNOWN)
-                {
-                    *p ++ = WICED_BT_MA_APH_RETRY;
-                    *p ++ = 1;
-                    *p ++ = p_param->retry;
-                }
-
-                wiced_bt_obex_add_byte_sequence_end((uint8_t *)p_obx->p_pkt, OBEX_HI_APP_PARMS, (UINT16)(p - p_start));
-
                 /* Add the body header to the packet */
                 wiced_bt_obex_add_header((uint8_t *)p_obx->p_pkt,
                         p_param->is_final ? OBEX_HI_BODY_END : OBEX_HI_BODY,
@@ -534,13 +515,34 @@ void wiced_mce_ma_push_msg(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_dat
                 APPL_TRACE_EVENT1("OBEX Send out %d bytes message data\n", p_param->len);
                 if (wiced_bt_obex_send_request(p_icb->obx_handle, OBEX_REQ_PUT, (wiced_bt_obex_req_param_t*)&final, (uint8_t *)p_obx->p_pkt) == OBEX_SUCCESS)
                 {
+                    p_icb->first_push_msg = WICED_FALSE;
                     p_icb->obx_oper = WICED_MCE_OP_PUSH_MSG;
                     p_icb->req_pending = TRUE;
                     status = WICED_BT_MA_STATUS_OK;
                 }
                 p_obx->p_pkt = NULL;
+
+                if (p_param->is_final)
+                {
+                    p_icb->first_push_msg = WICED_TRUE;
+                }
             }
         }
+    }
+
+    // Send request for next package assuming SRM is enabled.
+    if ( (status == WICED_BT_MA_STATUS_OK) && wiced_bt_obex_send_pkt_allowed(p_icb->obx_handle)
+        && (p_param->is_final == WICED_FALSE))
+    {
+        wiced_bt_mce_push_msg_t evt_data;
+
+        evt_data.status = WICED_BT_MA_STATUS_OK;
+        evt_data.session_id = p_icb->obx_handle;
+
+        memcpy(evt_data.msg_handle, p_icb->msg_hdl_str, WICED_BT_MA_HANDLE_SIZE);
+
+        p_cb->p_cback(WICED_BT_MCE_PUSH_MSG_EVT, (wiced_bt_mce_t *)&evt_data);
+        p_icb->obx_oper = WICED_MCE_OP_NONE;
     }
 
     if (status != WICED_BT_MA_STATUS_OK)
@@ -548,6 +550,7 @@ void wiced_mce_ma_push_msg(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_dat
         app_evt.obx_rsp_code = OBEX_RSP_OK;
         app_evt.status = status;
         app_evt.session_id = p_icb->obx_handle;
+        p_icb->first_push_msg = WICED_TRUE;
         p_cb->p_cback(WICED_BT_MCE_PUSH_MSG_EVT, (wiced_bt_mce_t *)&app_evt);
     }
 }
@@ -622,7 +625,7 @@ void wiced_mce_ma_chdir(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_data)
     wiced_bt_obex_setpath_flag_t obx_flags = OBEX_SPF_NO_CREATE;
     wiced_bt_mce_set_folder_t   app_evt;
 
-    APPL_TRACE_EVENT0("wiced_mce_ma_chdir\n");
+    APPL_TRACE_EVENT0("wiced_mce_ma_chdir %d\n", p_icb->obx_oper);
 
     if (p_icb->obx_oper == WICED_MCE_OP_NONE)
     {
@@ -773,7 +776,6 @@ void wiced_mce_ma_get_msg(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_data
     }
 }
 
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
 /*******************************************************************************
 **
 ** Function         wiced_mce_ma_get_mas_ins_info
@@ -793,7 +795,7 @@ void wiced_mce_ma_get_mas_ins_info(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_
     wiced_bt_ma_status_t            status = WICED_BT_MA_STATUS_FAIL;
     wiced_bool_t                    final = WICED_TRUE;
     wiced_bt_mce_get_mas_ins_info_t app_evt;
-    tOBX_TRIPLET                    app_param;
+    tOBEX_TRIPLET                    app_param;
     UINT8                           *p;
 
     if ( p_icb->mce_peer_features & WICED_BT_MA_SUP_FEA_INST_INFO)
@@ -807,17 +809,17 @@ void wiced_mce_ma_get_mas_ins_info(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_
             {
                 /* add type header */
                 p = (UINT8 *)WICED_BT_MA_HDR_TYPE_MAS_INS_INFO;
-                wiced_bt_obex_add_header((uint8_t *)p_obx->p_pkt, OBEX_HI_TYPE, (char *)p, strlen((char *)p) + 1);
+                wiced_bt_obex_add_header((uint8_t *)p_obx->p_pkt, OBEX_HI_TYPE, (uint8_t *)p, strlen((char *)p) + 1);
 
                 /* add app params */
                 app_param.tag = WICED_BT_MA_APH_MAS_INST_ID;
                 app_param.len = 1;
                 app_param.p_array = &(p_get_mas_ins_info->mas_instance_id);
-                wiced_bt_obex_add_header((uint8_t *)p_obx->p_pkt, OBEX_HI_APP_PARMS, &app_param, sizeof(app_param));
+                wiced_bt_obex_add_header((uint8_t *)p_obx->p_pkt, OBEX_HI_APP_PARMS, (uint8_t *)&app_param, sizeof(app_param));
             }
 
             /* Send out get request */
-            if (wiced_bt_obex_send_request(p_icb->obx_handle, OBEX_REQ_GET, (wiced_bt_obex_req_param_t*)&final, p_obx->p_pkt) == OBEX_SUCCESS)
+            if (wiced_bt_obex_send_request(p_icb->obx_handle, OBEX_REQ_GET, (wiced_bt_obex_req_param_t*)&final, (uint8_t *)p_obx->p_pkt) == OBEX_SUCCESS)
             {
                 p_icb->obx_oper = WICED_MCE_OP_GET_MAS_INS_INFO;
 
@@ -846,7 +848,6 @@ void wiced_mce_ma_get_mas_ins_info(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_
         p_cb->p_cback(WICED_BT_MCE_GET_MAS_INS_INFO, (wiced_bt_mce_t *)&app_evt);
     }
 }
-#endif /* #if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE) */
 
 /*******************************************************************************
 **
@@ -1082,12 +1083,10 @@ void wiced_mce_ma_obx_get_rsp(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_
     {
         wiced_mce_proc_get_msg_rsp(ccb_idx, icb_idx, p_data);
     }
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
     else if (p_icb->obx_oper == WICED_MCE_OP_GET_MAS_INS_INFO)
     {
         wiced_mce_proc_get_mas_ins_info_rsp(ccb_idx, icb_idx, p_data);
     }
-#endif
     else
         /* Release the unexpected OBX response packet */
         utl_freebuf((void**)&p_data->obx_evt.p_pkt);
@@ -1231,16 +1230,19 @@ void wiced_mce_obx_abort_rsp(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_d
     /* Done with Obex packet */
     utl_freebuf((void**)&p_data->obx_evt.p_pkt);
 
-    if (p_icb->obx_oper != WICED_MCE_OP_NONE)
-    {
-        /* Mark the fact we have already received the response from the peer */
-        p_icb->aborting |= WICED_MCE_ABORT_RSP_RCVD;
-    }
-
     param.abort.status = WICED_BT_MA_STATUS_OK;
     param.abort.session_id = p_icb->obx_handle;
     param.abort.obx_rsp_code = p_data->obx_evt.rsp_code;
     p_cb->p_cback(WICED_BT_MCE_ABORT_EVT, (wiced_bt_mce_t *)&param);
+
+    if (p_icb->obx_oper != WICED_MCE_OP_NONE)
+    {
+        /* Mark the fact we have already received the response from the peer */
+        p_icb->aborting |= WICED_MCE_ABORT_RSP_RCVD;
+        /* OBX_RSP_GONE indicates aborted */
+        p_data->obx_evt.rsp_code = (!p_icb->int_abort) ? OBEX_RSP_GONE : OBEX_RSP_INTRNL_SRVR_ERR;
+        wiced_mce_ma_sm_execute(ccb_idx, icb_idx, WICED_MCE_MA_OBX_CMPL_EVT, p_data);
+    }
 }
 /*******************************************************************************
 **
@@ -1389,7 +1391,6 @@ static void wiced_mce_search_sdp_db(UINT8 ccb_idx, wiced_bt_ma_inst_id_t mas_ins
             /* this is a mandatory attribute */
             wiced_bt_sdp_find_profile_version_in_rec (p_rec, UUID_SERVCLASS_MAP_PROFILE, &version);
 
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
             /* If profile version is 1.2 or greater, look for supported features and L2CAP PSM */
             if (version >= WICED_BT_MA_VERSION_1_2)
             {
@@ -1434,7 +1435,6 @@ static void wiced_mce_search_sdp_db(UINT8 ccb_idx, wiced_bt_ma_inst_id_t mas_ins
                 }
 
             }
-#endif /* BTA_MAP_1_2_SUPPORTED */
             /* get scn from proto desc list; if not found, go to next record */
             if (!found && wiced_bt_sdp_find_protocol_list_elem_in_rec(p_rec, UUID_PROTOCOL_RFCOMM, &pe))
             {
@@ -1544,7 +1544,6 @@ static void wiced_mce_sdp_cback(UINT8 ccb_idx, UINT16 status)
                     /* this is a mandatory attribute */
                     wiced_bt_sdp_find_profile_version_in_rec (p_rec, UUID_SERVCLASS_MAP_PROFILE, &version);
                     APPL_TRACE_DEBUG1("wiced_mce_sdp_cback() MAP peer version = %x\n", version);
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
                     /* If profile version is 1.2 or greater, look for supported features and L2CAP PSM */
                     if (version >= WICED_BT_MA_VERSION_1_2)
                     {
@@ -1597,7 +1596,6 @@ static void wiced_mce_sdp_cback(UINT8 ccb_idx, UINT16 status)
                             continue;
                         }
                     }
-#endif /* BTA_MAP_1_2_SUPPORTED */
                     /* get scn from proto desc list; if not found, go to next record */
                     if (!found && wiced_bt_sdp_find_protocol_list_elem_in_rec(p_rec, UUID_PROTOCOL_RFCOMM, &pe))
                     {
@@ -1937,12 +1935,10 @@ void wiced_mce_mn_start_service(wiced_mce_cb_t *p_cb, wiced_mce_data_t *p_data)
         target.len = WICED_MAS_UUID_LENGTH;
 
         /* store parameters */
-        p_cb->mn_scn = WICED_BT_MNS_RFCOMM_SCN;     //BTM_AllocateSCN();
+        p_cb->mn_scn = p_api->scn; // WICED_BT_MNS_RFCOMM_SCN;     //BTM_AllocateSCN();
 
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
-        p_cb->mn_psm = WICED_BT_MNS_L2CAP_PSM;      //L2CA_AllocatePSM();
+        p_cb->mn_psm = p_api->psm; // WICED_BT_MNS_L2CAP_PSM;      //L2CA_AllocatePSM();
         p_cb->mce_local_features = p_api->mce_local_features;
-#endif
 
         /* Start up the MAS service */
         memset(&start_msg, 0, sizeof(wiced_bt_obex_start_params_t));
@@ -1953,10 +1949,8 @@ void wiced_mce_mn_start_service(wiced_mce_cb_t *p_cb, wiced_mce_data_t *p_data)
         start_msg.scn = p_cb->mn_scn;
         start_msg.p_cback = wiced_mce_mn_obx_cback;
 
-#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
         start_msg.psm = p_cb->mn_psm;
         start_msg.srm = TRUE;
-#endif
 
         start_msg.max_sessions = WICED_BT_MCE_MN_NUM_SESSION;
 
