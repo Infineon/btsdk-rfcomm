@@ -148,7 +148,7 @@ static const UINT8 obx_ssm_entry_map[][OBEX_SS_MAX-1] =
 /* STATE    */{ 0x84, 0x84, 0x84, 0x84, 0x84, 0x84, 0x84, 0x84, 0x84, 0x84, 0x84, 0x84, 0x84, 0x84, 0x84 ,0x84 },
 /* TIMEOUT  */{ 2,    0,    0,    0,    2,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ,2    },
 /* BAD_REQ  */{ 0x86, 0x82, 0x82, 0x86, 0x82, 0x82, 0x82, 0x82, 0x82, 0x82, 0x82, 0x82, 0x82, 0x82, 0x82 ,0x86 },
-/* TX_EMPTY */{ 2,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ,0    }
+/* TX_EMPTY */{ 0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0    ,0    }
 };
 
 static const UINT8 obx_sr_all_table[][OBEX_SM_NUM_COLS] = {

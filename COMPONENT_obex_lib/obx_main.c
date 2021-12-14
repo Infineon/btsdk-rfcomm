@@ -267,13 +267,10 @@ void obx_cl_timeout(uint32_t cb_params)
 
     OBEX_TRACE_DEBUG0("obx_cl_timeout\n");
     memset(&evtp, 0, sizeof(tOBEX_EVT_PARAM));
-    if (obx_cb.timeout_val)
-        wiced_start_timer(&p_tle->wiced_timer, obx_cb.timeout_val);
-    else
-    {
-        wiced_stop_timer(&p_tle->wiced_timer);
-        p_tle->in_use = FALSE;
-    }
+
+    wiced_stop_timer(&p_tle->wiced_timer);
+    p_tle->in_use = FALSE;
+
     obx_csm_event(p_cb, OBEX_TIMEOUT_CEVT, NULL);
     (*p_cback) (handle, OBEX_TIMEOUT_EVT, OBEX_RSP_DEFAULT, evtp, NULL);
 }
@@ -534,14 +531,13 @@ void obx_sr_timeout(uint32_t cb_params)
     tOBEX_SR_CBACK   *p_cback;
     tOBEX_SR_CB      *p_cb;
 
+    OBEX_TRACE_DEBUG0("obx_sr_timeout\n");
+
     memset(&evtp, 0, sizeof(tOBEX_EVT_PARAM));
-    if (obx_cb.timeout_val)
-        wiced_start_timer(&p_tle->wiced_timer, obx_cb.timeout_val);
-    else
-    {
-        wiced_stop_timer(&p_tle->wiced_timer);
-        p_tle->in_use = FALSE;
-    }
+
+    wiced_stop_timer(&p_tle->wiced_timer);
+    p_tle->in_use = FALSE;
+
     p_cb = &obx_cb.server[p_scb->handle - 1];
     p_cback = p_cb->p_cback;
     obx_ssm_event(p_scb, OBEX_TIMEOUT_SEVT, NULL);

@@ -872,9 +872,8 @@ tOBEX_CL_STATE obx_ca_snd_req(tOBEX_CL_CB *p_cb, BT_HDR *p_pkt)
     if (p_cb->p_saved_req)
         GKI_freebuf(p_cb->p_saved_req);
 
-    p_cb->p_saved_req   = obx_dup_pkt(p_pkt);
 
-    OBEX_TRACE_DEBUG3( "event p_saved_req:%d, pkt:%d, final: %d\n", p_cb->p_saved_req->event, p_pkt->event,p_cb->final);
+    OBEX_TRACE_DEBUG3( "event pkt:%d, final: %d\n", p_pkt->event,p_cb->final);
 
     /* If Abort req is being sent, need to flush rx_q to prevent congestion */
     if (rsp_code == (OBEX_REQ_ABORT | OBEX_FINAL))

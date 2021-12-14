@@ -205,7 +205,7 @@ wiced_bt_l2cap_appl_information_t obx_l2c_sr_appl =
         FALSE,                      /* fcs_present */
         0,                          /* fcs ('0' if desire is to bypass FCS, otherwise '1') */
 
-        FALSE                       /* is_ob_only */
+        TRUE                        /* is_ob_only */
 
     };
 

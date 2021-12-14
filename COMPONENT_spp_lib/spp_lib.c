@@ -53,22 +53,28 @@
 #include "wiced_bt_utils.h"
 
 /*****************************************************************************
-**  Constants
-*****************************************************************************/
+ *  Constants
+ *****************************************************************************/
 
 /*****************************************************************************
-**  Data types
-*****************************************************************************/
+ *  Data types
+ *****************************************************************************/
 typedef enum
 {
     INDEX_TYPE_PORT_HANDLE,
     INDEX_TYPE_STATE_OPENING,
-	INDEX_TYPE_STATE_IDLE,
+    INDEX_TYPE_STATE_IDLE,
 } spp_scb_index_type_t;
 
 /******************************************************
-*                 Global Variables
-******************************************************/
+ *  External Functions
+ ******************************************************/
+extern void spp_rfcomm_opened(spp_scb_t *p_scb);
+extern void spp_rfcomm_control_callback(uint32_t port_status, uint16_t port_handle);
+
+/******************************************************
+ *  Global Variables
+ ******************************************************/
 
 // Session control block.  Currently support 1.
 spp_scb_t   spp_scb[SPP_MAX_CONNECTIONS];
@@ -91,21 +97,24 @@ static wiced_bt_uuid_t  spp_uuid =
 uint32_t    spp_bytes_rxed = 0;
 
 /******************************************************
- *               Function Definitions
+ *  Function Declartions
  ******************************************************/
+void                spp_rfcomm_closed(spp_scb_t *p_scb);
+void                spp_rfcomm_acceptor_opened(spp_scb_t *p_scb);
+spp_scb_t*          spp_lib_get_scb_pointer( spp_scb_index_type_t index, uint16_t port_handle );
+
 static void         spp_rfcomm_start_server(spp_scb_t *p_scb);
-static void         spp_rfcomm_closed(spp_scb_t *p_scb);
-static void         spp_rfcomm_opened(spp_scb_t *p_scb);
-static void         spp_rfcomm_acceptor_opened(spp_scb_t *p_scb);
 static void         spp_port_event_cback(wiced_bt_rfcomm_port_event_t event, uint16_t port_handle);
 static void         spp_sdp_start_discovery(spp_scb_t *p_scb);
 static wiced_bool_t spp_sdp_find_attr(spp_scb_t *p_scb);
 static void         spp_sdp_cback(uint16_t status);
 static void         spp_sdp_free_db(spp_scb_t *p_scb);
 static void         spp_rfcomm_do_close(spp_scb_t *p_scb);
-static spp_scb_t*   spp_lib_get_scb_pointer( spp_scb_index_type_t index, uint16_t port_handle );
 static spp_scb_t*   spp_lib_find_scb_by_bdaddr(BD_ADDR bd_addr);
 
+/******************************************************
+ *  Function Definitions
+ ******************************************************/
 /*
  * Start up the SPP service.
  */
@@ -234,58 +243,6 @@ void wiced_bt_spp_rx_flow_enable(uint16_t handle, wiced_bool_t enable)
 }
 
 /*
- * send data down down.
- */
-wiced_bool_t wiced_bt_spp_send_session_data(uint16_t handle, uint8_t *p_data, uint32_t length)
-{
-    wiced_bt_rfcomm_result_t  result;
-    BT_HDR *p_buf = (BT_HDR *)GKI_getpoolbuf(SPP_BUFFER_POOL);
-
-    if (!p_buf || (L2CAP_MIN_OFFSET + RFCOMM_MIN_OFFSET > GKI_get_pool_bufsize(SPP_BUFFER_POOL)))
-    {
-        SPP_TRACE("no mem\n");
-        return WICED_FALSE;
-    }
-    p_buf->offset = L2CAP_MIN_OFFSET + RFCOMM_MIN_OFFSET;
-
-    memcpy((uint8_t *)(p_buf + 1) + p_buf->offset, p_data, length);
-
-    p_buf->len    = length;
-    result = PORT_Write(handle, p_buf);
-
-    // port_write error is not returned from firmware, so check event history
-    if(!result)
-    {
-        spp_scb_t *p_scb = spp_lib_get_scb_pointer( INDEX_TYPE_PORT_HANDLE , handle );
-        if(NULL != p_scb)
-        {
-            result |= p_scb->event_error;
-        }
-    }
-    //SPP_TRACE("wrote %d result %d (%02x-%02x)\n", length, result, p_data[0], p_data[length - 1]);
-    return (result == 0) ? WICED_TRUE : WICED_FALSE;
-}
-
-/*
- * Return WICED_TRUE if the stack can queue more forward data
- */
-wiced_bool_t wiced_bt_spp_can_send_more_data(uint16_t handle)
-{
-    spp_scb_t *p_scb = spp_lib_get_scb_pointer( INDEX_TYPE_PORT_HANDLE , handle );
-
-    if( p_scb == NULL )
-    {
-        SPP_TRACE( "ERROR wiced_bt_spp_can_send_more_data - cannot find scb based on handle %d\n", handle );
-        return WICED_FALSE;
-    }
-    else
-    {
-        //SPP_TRACE("SPP pool count:%d free:%d flow_off:%d\n", GKI_poolcount(SPP_BUFFER_POOL), GKI_poolfreecount(SPP_BUFFER_POOL), p_scb->flow_control_on);
-        return ((GKI_poolfreecount(SPP_BUFFER_POOL) > GKI_poolcount(SPP_BUFFER_POOL) / 2) && !p_scb->flow_control_on);
-    }
-}
-
-/*
  * Return the connection state
  */
 uint8_t wiced_bt_spp_get_connection_state(BD_ADDR bd_addr)
@@ -300,46 +257,6 @@ uint8_t wiced_bt_spp_get_connection_state(BD_ADDR bd_addr)
         return SPP_SESSION_STATE_IDLE;
     }
 }
-
-/*
- * RFCOMM management callback
- */
-static void spp_rfcomm_control_callback(uint32_t port_status, uint16_t port_handle)
-{
-    spp_scb_t *p_scb = spp_lib_get_scb_pointer( INDEX_TYPE_PORT_HANDLE , port_handle );
-
-    if( p_scb == NULL )
-    {
-        SPP_TRACE( "ERROR spp_rfcomm_control_callback - cannot find scb based on handle %d\n", port_handle );
-        return;
-    }
-
-    SPP_TRACE("spp_rfcomm_control_callback : Status = %d, port: 0x%04x  SCB state: %u  Srv: 0x%04x  Conn: 0x%04x\n",
-                    port_status, port_handle, p_scb->state, p_scb->rfc_serv_handle, p_scb->rfc_conn_handle);
-
-    /* ignore close event for port handles other than connected handle */
-    if ((port_status != WICED_BT_RFCOMM_SUCCESS) && (port_handle != p_scb->rfc_conn_handle))
-    {
-        SPP_TRACE("spp_rfcomm_control_callback ignoring handle:%d", port_handle);
-        return;
-    }
-
-    if ((port_status == WICED_BT_RFCOMM_SUCCESS) && (p_scb->state != SPP_SESSION_STATE_CLOSING))
-    {
-        // Register data callback to receive data and set event mask to receive event notifications
-        wiced_bt_rfcomm_set_event_mask(port_handle, PORT_MASK_ALL);
-
-        if (p_scb->state == SPP_SESSION_STATE_IDLE)
-            spp_rfcomm_acceptor_opened(p_scb);
-        else
-            spp_rfcomm_opened(p_scb);
-    }
-    else
-    {
-        spp_rfcomm_closed(p_scb);
-    }
-}
-
 
 /*
  * Setup RFCOMM server for use by HS.
@@ -454,26 +371,6 @@ void spp_rfcomm_closed(spp_scb_t *p_scb)
     p_scb->p_spp_reg->p_connection_down_callback(handle);
 }
 
-/*
- * Handle RFCOMM channel opened.
- */
-void spp_rfcomm_opened(spp_scb_t *p_scb)
-{
-    int i;
-
-    p_scb->state = SPP_SESSION_STATE_OPEN;
-
-    /* store parameters */
-    for (i = 0; i < BD_ADDR_LEN; i++)
-        bd_addr_connected[i] = p_scb->server_addr[i];
-
-    wiced_bt_rfcomm_set_event_callback(p_scb->rfc_conn_handle, spp_port_event_cback);
-
-    SPP_TRACE("RFCOMM Connected  isInit: %u  Serv: 0x%04x   Conn: 0x%04x %B\n",
-        p_scb->b_is_initiator, p_scb->rfc_serv_handle, p_scb->rfc_conn_handle, bd_addr_connected);
-
-    p_scb->p_spp_reg->p_connection_up_callback(p_scb->rfc_conn_handle, p_scb->server_addr);
-}
 
 /*
  * Handle RFCOMM channel opened when accepting connection.
@@ -627,51 +524,7 @@ void spp_sdp_free_db(spp_scb_t *p_scb)
     }
 }
 
-/*
- * Process RFCOMM events
- */
-void spp_port_event_cback(wiced_bt_rfcomm_port_event_t event, uint16_t handle)
-{
-    BT_HDR    *p_buf;
-    spp_scb_t *p_scb = spp_lib_get_scb_pointer( INDEX_TYPE_PORT_HANDLE , handle );
-
-    if( p_scb == NULL )
-    {
-        SPP_TRACE( "ERROR spp_port_event_cback - cannot find scb based on handle %d\n", handle );
-        return;
-    }
-
-    // SPP_TRACE("%s ev:%x\n", __FUNCTION__, event);
-
-    if (event & PORT_EV_RXCHAR)
-    {
-        if ((PORT_Read(handle, &p_buf) == PORT_SUCCESS) && (p_buf != NULL))
-        {
-//            SPP_TRACE("rfcomm_data: len:%d handle %x data (%02x-%02x)\n", p_buf->len, handle,
-//                    *((uint8_t *)(p_buf + 1) + p_buf->offset), *((uint8_t *)(p_buf + 1) + p_buf->offset + p_buf->len - 1));
-
-            spp_bytes_rxed += p_buf->len;
-
-//            SPP_TRACE("spp_session_data: len:%u, total: %u (session %x data %02x-%02x)\n",
-//                p_buf->len, spp_bytes_rxed, handle, *((uint8_t *)(p_buf + 1) + p_buf->offset), *((uint8_t *)(p_buf + 1) + p_buf->offset + p_buf->len - 1));
-
-            p_scb->p_spp_reg->p_rx_data_callback(handle, (uint8_t *)(p_buf + 1) + p_buf->offset, p_buf->len);
-            GKI_freebuf(p_buf);
-            return;
-        }
-    }
-    if (event & PORT_EV_FC)
-    {
-        p_scb->flow_control_on = !(event & PORT_EV_FCS) ? WICED_TRUE : WICED_FALSE;
-    }
-    if (event & PORT_EV_TXEMPTY)
-    {
-        p_scb->flow_control_on = WICED_FALSE;
-    }
-    p_scb->event_error = (event & PORT_EV_ERR) ? 1 : 0;
-}
-
-static spp_scb_t* spp_lib_get_scb_pointer( spp_scb_index_type_t index, uint16_t port_handle )
+spp_scb_t* spp_lib_get_scb_pointer( spp_scb_index_type_t index, uint16_t port_handle )
 {
     uint8_t i;
     wiced_bool_t spp_scb_found = WICED_FALSE;

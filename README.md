@@ -13,7 +13,7 @@ This repo contains RFCOMM libraries used in BTSDK 2.0 and higher. The libraries 
 
 
 * spp_lib<br/>
-    * Bluetooth Serial Port Profile library<br/>
+    * Bluetooth&#174; Serial Port Profile library<br/>
 
 
 * opp_lib<br/>
