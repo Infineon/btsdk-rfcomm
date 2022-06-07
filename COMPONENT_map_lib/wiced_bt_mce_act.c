@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -103,8 +103,13 @@ void wiced_mce_ma_init_sdp(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_dat
     wiced_bt_uuid_t     uuid_list;
     wiced_mce_ma_cb_t   *p_ccb = WICED_MCE_GET_MA_CB_PTR(ccb_idx);
     wiced_mce_inst_cb_t *p_icb = WICED_MCE_GET_MA_INST_CB_PTR(ccb_idx, icb_idx);
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
     UINT16              attr_list[8];
     UINT16              num_attrs = 8;
+#else
+    UINT16              attr_list[7];
+    UINT16              num_attrs = 7;
+#endif
 
     APPL_TRACE_EVENT0("wiced_mce_ma_init_sdp\n");
 
@@ -133,7 +138,9 @@ void wiced_mce_ma_init_sdp(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_dat
                 attr_list[5] = ATTR_ID_SUPPORTED_MSG_TYPE;
                 /* always search peer features */
                 attr_list[6] = ATTR_ID_SUPPORTED_FEATURES_32;
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
                 attr_list[7] = ATTR_ID_OBX_OVR_L2CAP_PSM;
+#endif
 
                 uuid_list.len = LEN_UUID_16;
                 uuid_list.uu.uuid16 = UUID_SERVCLASS_MESSAGE_ACCESS;
@@ -205,6 +212,7 @@ void wiced_mce_ma_start_client(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p
     BOOLEAN             send_close_evt = TRUE;
     wiced_mce_obx_evt_t obx_evt;
 
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
     tOBEX_STATUS         status;
     BOOLEAN             use_srm = TRUE; /* Always allow if OBEX/L2CAP */
 
@@ -230,7 +238,7 @@ void wiced_mce_ma_start_client(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p
         if (status == OBEX_SUCCESS)
         {
             wiced_bt_obex_add_header((uint8_t *)p_obx->p_pkt, OBEX_HI_TARGET, (UINT8 *)WICED_MAS_MESSAGE_ACCESS_TARGET_UUID,
-			WICED_MAS_UUID_LENGTH);
+                             WICED_MAS_UUID_LENGTH);
 
             if ((wiced_bt_obex_create_session (p_ccb->bd_addr, OBEX_MAX_MTU, use_srm, 0,
                                p_icb->obx_handle, (uint8_t *)p_obx->p_pkt)) == OBEX_SUCCESS)
@@ -240,7 +248,26 @@ void wiced_mce_ma_start_client(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p
             }
         }
     }
+#else
 
+    APPL_TRACE_EVENT0("wiced_mce_ma_start_client\n");
+
+    p_ccb->sdp_pending = FALSE;
+
+    /* Allocate an OBX packet */
+    if ((p_obx->p_pkt = (BT_HDR *)(BT_HDR  *)wiced_bt_obex_header_init(OBEX_HANDLE_NULL, OBEX_CMD_POOL_SIZE)) != NULL)
+    {
+        wiced_bt_obex_add_header((uint8_t *)p_obx->p_pkt, OBEX_HI_TARGET, (UINT8 *)WICED_MAS_MESSAGE_ACCESS_TARGET_UUID,
+                         WICED_MAS_UUID_LENGTH);
+
+        if (wiced_bt_obex_connect(p_ccb->bd_addr, p_data->sdp_result.scn, OBEX_MAX_MTU,
+                           wiced_mce_ma_obx_cback, &p_icb->obx_handle, (uint8_t *)p_obx->p_pkt) == OBEX_SUCCESS)
+        {
+            p_obx->p_pkt = NULL;    /* OBX will free the memory */
+            send_close_evt = FALSE;
+        }
+    }
+#endif  /* BTA_MAP_1_2_SUPPORTED */
 
     if (send_close_evt)
     {
@@ -329,7 +356,10 @@ void wiced_mce_ma_obx_conn_rsp(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p
     /* Done with Obex packet */
     utl_freebuf((void**)&p_data->obx_evt.p_pkt);
 
-    wiced_mce_send_ma_open_evt(ccb_idx, icb_idx, WICED_BT_MA_STATUS_OK);
+    if (p_data->obx_evt.rsp_code == OBEX_RSP_FORBIDDEN)
+        wiced_mce_send_ma_open_evt(ccb_idx, icb_idx, WICED_BT_MA_STATUS_EACCES);
+    else
+        wiced_mce_send_ma_open_evt(ccb_idx, icb_idx, WICED_BT_MA_STATUS_OK);
 }
 
 /*******************************************************************************
@@ -776,6 +806,7 @@ void wiced_mce_ma_get_msg(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_data
     }
 }
 
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
 /*******************************************************************************
 **
 ** Function         wiced_mce_ma_get_mas_ins_info
@@ -848,6 +879,7 @@ void wiced_mce_ma_get_mas_ins_info(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_
         p_cb->p_cback(WICED_BT_MCE_GET_MAS_INS_INFO, (wiced_bt_mce_t *)&app_evt);
     }
 }
+#endif /* #if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE) */
 
 /*******************************************************************************
 **
@@ -1083,10 +1115,12 @@ void wiced_mce_ma_obx_get_rsp(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_
     {
         wiced_mce_proc_get_msg_rsp(ccb_idx, icb_idx, p_data);
     }
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
     else if (p_icb->obx_oper == WICED_MCE_OP_GET_MAS_INS_INFO)
     {
         wiced_mce_proc_get_mas_ins_info_rsp(ccb_idx, icb_idx, p_data);
     }
+#endif
     else
         /* Release the unexpected OBX response packet */
         utl_freebuf((void**)&p_data->obx_evt.p_pkt);
@@ -1391,6 +1425,7 @@ static void wiced_mce_search_sdp_db(UINT8 ccb_idx, wiced_bt_ma_inst_id_t mas_ins
             /* this is a mandatory attribute */
             wiced_bt_sdp_find_profile_version_in_rec (p_rec, UUID_SERVCLASS_MAP_PROFILE, &version);
 
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
             /* If profile version is 1.2 or greater, look for supported features and L2CAP PSM */
             if (version >= WICED_BT_MA_VERSION_1_2)
             {
@@ -1435,6 +1470,7 @@ static void wiced_mce_search_sdp_db(UINT8 ccb_idx, wiced_bt_ma_inst_id_t mas_ins
                 }
 
             }
+#endif /* BTA_MAP_1_2_SUPPORTED */
             /* get scn from proto desc list; if not found, go to next record */
             if (!found && wiced_bt_sdp_find_protocol_list_elem_in_rec(p_rec, UUID_PROTOCOL_RFCOMM, &pe))
             {
@@ -1487,7 +1523,7 @@ static void wiced_mce_search_sdp_db(UINT8 ccb_idx, wiced_bt_ma_inst_id_t mas_ins
 ******************************************************************************/
 static void wiced_mce_sdp_cback(UINT8 ccb_idx, UINT16 status)
 {
-    wiced_mce_ma_cb_t   *p_ccb = WICED_MCE_GET_MA_CB_PTR(ccb_idx);
+    wiced_mce_ma_cb_t   *p_ccb = NULL;
     wiced_mce_sdp_evt_t *p_buf;
     wiced_mce_inst_cb_t *p_icb = NULL;
     wiced_bt_sdp_discovery_record_t *p_rec = NULL;
@@ -1501,6 +1537,12 @@ static void wiced_mce_sdp_cback(UINT8 ccb_idx, UINT16 status)
     UINT32              peer_features = WICED_BT_MA_DEFAULT_SUPPORTED_FEATURES;
     UINT8               i;
 
+    if (ccb_idx >= WICED_BT_MCE_NUM_MA)
+    {
+        APPL_TRACE_WARNING2("[%s] CCB_IDX(%d) out of range ",__FUNCTION__,ccb_idx);
+        return;
+    }
+    p_ccb = WICED_MCE_GET_MA_CB_PTR(ccb_idx);
     APPL_TRACE_EVENT1("wiced_mce_sdp_cback status:%d\n", status);
 
     if ((p_icb = wiced_mce_get_mce_inst_cb_using_inst_id(ccb_idx, p_ccb->sdp_inst_id)) != NULL)
@@ -1544,6 +1586,7 @@ static void wiced_mce_sdp_cback(UINT8 ccb_idx, UINT16 status)
                     /* this is a mandatory attribute */
                     wiced_bt_sdp_find_profile_version_in_rec (p_rec, UUID_SERVCLASS_MAP_PROFILE, &version);
                     APPL_TRACE_DEBUG1("wiced_mce_sdp_cback() MAP peer version = %x\n", version);
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
                     /* If profile version is 1.2 or greater, look for supported features and L2CAP PSM */
                     if (version >= WICED_BT_MA_VERSION_1_2)
                     {
@@ -1596,6 +1639,7 @@ static void wiced_mce_sdp_cback(UINT8 ccb_idx, UINT16 status)
                             continue;
                         }
                     }
+#endif /* BTA_MAP_1_2_SUPPORTED */
                     /* get scn from proto desc list; if not found, go to next record */
                     if (!found && wiced_bt_sdp_find_protocol_list_elem_in_rec(p_rec, UUID_PROTOCOL_RFCOMM, &pe))
                     {
@@ -1809,7 +1853,8 @@ void wiced_mce_ma_obx_cback (wiced_bt_obex_handle_t handle, wiced_bt_obex_event_
                 APPL_TRACE_WARNING1("MCE_CBACK: Bad connect response 0x%02x\n", rsp_code);
                 if (p_pkt)
                     GKI_freebuf(p_pkt);
-                return;
+                event = WICED_MCE_MA_OBX_CONN_RSP_EVT;
+                //return;
             }
             break;
         case OBEX_PUT_RSP_EVT:
@@ -1937,8 +1982,11 @@ void wiced_mce_mn_start_service(wiced_mce_cb_t *p_cb, wiced_mce_data_t *p_data)
         /* store parameters */
         p_cb->mn_scn = p_api->scn; // WICED_BT_MNS_RFCOMM_SCN;     //BTM_AllocateSCN();
 
+
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
         p_cb->mn_psm = p_api->psm; // WICED_BT_MNS_L2CAP_PSM;      //L2CA_AllocatePSM();
         p_cb->mce_local_features = p_api->mce_local_features;
+#endif
 
         /* Start up the MAS service */
         memset(&start_msg, 0, sizeof(wiced_bt_obex_start_params_t));
@@ -1949,8 +1997,10 @@ void wiced_mce_mn_start_service(wiced_mce_cb_t *p_cb, wiced_mce_data_t *p_data)
         start_msg.scn = p_cb->mn_scn;
         start_msg.p_cback = wiced_mce_mn_obx_cback;
 
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
         start_msg.psm = p_cb->mn_psm;
         start_msg.srm = TRUE;
+#endif
 
         start_msg.max_sessions = WICED_BT_MCE_MN_NUM_SESSION;
 

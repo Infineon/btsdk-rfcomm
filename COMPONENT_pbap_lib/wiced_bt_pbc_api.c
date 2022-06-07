@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -76,9 +76,9 @@ void wiced_bt_pbc_op_enable(wiced_bt_pbc_cback_t *p_cback, wiced_bt_pbc_data_cba
         p_buf->p_cback = p_cback;
         p_buf->p_data_cback = p_data_cback;
         p_buf->app_id = app_id;
-
+#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
         p_buf->local_features = local_features;
-
+#endif
         wiced_bt_pbc_hdl_event((BT_HDR*)p_buf);
         GKI_freebuf(p_buf);
     }
@@ -226,10 +226,11 @@ void wiced_bt_pbc_op_getphonebook(char *p_local_name, char *p_remote_name,
         p_getp->format = format;
         p_getp->list_start_offset = list_start_offset;
         p_getp->max_list_count = max_list_count;
-
+#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
         p_getp->is_reset_miss_calls = is_reset_miss_calls;
         p_getp->selector = selector;
         p_getp->selector_op = selector_op;
+#endif
 
         p_get->hdr.event = WICED_BT_PBC_API_GETFILE_EVT;
         wiced_bt_pbc_hdl_event((BT_HDR*)p_msg);
@@ -431,11 +432,11 @@ void wiced_bt_pbc_op_listcards(char *p_dir, wiced_bt_pbc_order_t order, char *p_
         p_param->attribute           = attribute;
         p_param->max_list_count      = max_list_count;
         p_param->list_start_offset   = list_start_offset;
-
+#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
         p_param->is_reset_miss_calls = is_reset_miss_calls;
         p_param->selector = selector;
         p_param->selector_op = selector_op;
-
+#endif
         if (dir_len)
             BCM_STRNCPY_S(p_list->p_dir, dir_len+1, p_dir, dir_len);
         p_list->p_dir[dir_len] = 0;

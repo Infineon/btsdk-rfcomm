@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -140,7 +140,7 @@ static const UINT8 obx_csm_entry_map[][OBEX_CS_MAX-1] =
 /* TX_EMPTY */{ 0x87, 0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0 },
 /* FCS_SET  */{ 0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    2 },
 /* STATE    */{ 0x85, 0x85, 0x85, 0x85, 0x85, 0x85, 0x85, 0x85, 0x85, 0x85, 0x85, 0x85, 0x85, 0x85, 0x85 },
-/* TIMEOUT  */{ 3,    2,    0x87, 0,    0x87, 0,    0,    0,    0,    0,    0,    0,    0,    0,    0 }
+/* TIMEOUT  */{ 3,    2,    0x87, 0,    0x87, 0,    0,    0,    0,    0x87, 0,    0,    0,    0x87, 0 }
 };
 
 static const UINT8 obx_cl_all_table[][OBEX_SM_NUM_COLS] = {

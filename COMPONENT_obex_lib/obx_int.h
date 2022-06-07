@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -60,7 +60,7 @@
 #define MAX_RFC_PORTS               5
 
 #undef  MAX_L2CAP_CHANNELS
-#define MAX_L2CAP_CHANNELS          10
+#define MAX_L2CAP_CHANNELS          3
 
 #ifndef L2CAP_BASE_APPL_CID
 #define L2CAP_BASE_APPL_CID             0x0040
@@ -96,7 +96,9 @@
 #define OBEX_ACTION_HDRS_OFFSET     3
 #define OBEX_RESPONSE_HDRS_OFFSET   3
 
+#if !defined(CYW20706A2)
 #define OBEX_LIB_L2CAP_INCLUDED TRUE
+#endif
 
 #define OBEX_TRACE_API0             WICED_BT_TRACE
 #define OBEX_TRACE_API1             WICED_BT_TRACE
@@ -603,6 +605,11 @@ typedef struct
                                         /* set to the current OP (non-abort) in rfc.c, set it to abort when a response is sent */
 } tOBEX_SR_SESS_CB;
 
+typedef struct{
+    uint16_t lcid;
+    tOBEX_HANDLE obx_handle;
+}t_obx_l2c_map_t;
+
 typedef struct
 {
     tOBEX_SR_CB     server[OBEX_NUM_SERVERS];/* The server control blocks */
@@ -616,7 +623,7 @@ typedef struct
 
     tOBEX_HANDLE    hdl_map[MAX_RFC_PORTS]; /* index of this array is the port_handle,
                                          * the value is the OBX handle */
-    UINT16          l2c_map[MAX_L2CAP_CHANNELS]; /* index of this array is (lcid - L2CAP_BASE_APPL_CID) */
+    t_obx_l2c_map_t l2c_map[MAX_L2CAP_CHANNELS]; /* key of this map is lcid, mapped to obex handle */
     UINT32          timeout_val;        /* The timeout value to wait for activity from peer */
     UINT32          sess_tout_val;      /* The timeout value for reliable sessions to remain in suspend */
     UINT8           num_client;         /* Number of client control blocks */
@@ -801,6 +808,7 @@ extern BOOLEAN obx_l2c_snd_msg(tOBEX_LL_CB *p_l2cb);
 extern void obx_l2c_snd_evt (tOBEX_L2C_CB *p_l2cb, tOBEX_L2C_EVT_PARAM  param, tOBEX_L2C_EVT l2c_evt);
 extern void obx_sr_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg);
 extern void obx_cl_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg);
+extern void obx_free_l2c_map_entry(uint16_t lcid);
 
 /* from obx_utils.c */
 extern UINT8 obx_verify_response(UINT8 opcode, tOBEX_RX_HDR *p_rxh);

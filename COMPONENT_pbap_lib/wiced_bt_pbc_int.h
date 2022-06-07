@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -140,7 +140,11 @@ typedef UINT8 tWICED_BT_PBC_SUP_REPOSIT_MASK;
 #define WICED_BT_PBC_REPOSITORIES_1_1    (WICED_BT_PBC_REPOSIT_LOCAL | WICED_BT_PBC_REPOSIT_SIM)
 #define WICED_BT_PBC_REPOSITORIES_1_2    (WICED_BT_PBC_REPOSIT_LOCAL | WICED_BT_PBC_REPOSIT_SIM | WICED_BT_PBC_REPOSIT_SPEED_DIAL | WICED_BT_PBC_REPOSIT_FAVORITES)
 
+#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
 #define WICED_BT_PBC_DEFAULT_VERSION         WICED_BT_PBC_VERSION_1_2
+#else
+#define WICED_BT_PBC_DEFAULT_VERSION         WICED_BT_PBC_VERSION_1_1
+#endif
 
 #define WICED_BT_PBC_DEFAULT_REPOSITORIES        WICED_BT_PBC_REPOSITORIES_1_1
 #define WICED_BT_PBC_DEFAULT_SUPPORTED_FEATURES  0x00000003  /* Default peer supported features */
@@ -236,9 +240,9 @@ typedef struct
     wiced_bt_pbc_cback_t     *p_cback;
     wiced_bt_pbc_data_cback_t     *p_data_cback;
     UINT8               app_id;
-
+#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
     wiced_bt_pbc_sup_fea_mask_t   local_features;
-
+#endif
 } wiced_bt_pbc_api_enable_t;
 
 /* data type for WICED_BT_PBC_API_OPEN_EVT */
@@ -255,11 +259,11 @@ typedef struct
     UINT16                          max_list_count;
     UINT16                          list_start_offset;
     wiced_bt_pbc_format_t           format;
-
+#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
     BOOLEAN                 is_reset_miss_calls;
     wiced_bt_pbc_filter_mask_t    selector;
     UINT8                   selector_op;
-
+#endif
 } wiced_bt_pbc_get_param_t;
 
 /* data type for WICED_BT_PBC_API_GETFILE_EVT */
@@ -288,10 +292,11 @@ typedef struct
     UINT16                      list_start_offset;
     wiced_bt_pbc_order_t        order;
     wiced_bt_pbc_attr_t         attribute;
+#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
     BOOLEAN             is_reset_miss_calls;
     wiced_bt_pbc_filter_mask_t    selector;
     UINT8                   selector_op;
-
+#endif
 } wiced_bt_pbc_list_param_t;
 
 /* data type for WICED_BT_PBC_API_LISTDIR_EVT */
@@ -437,9 +442,9 @@ typedef struct
     BOOLEAN                     req_pending;   /* TRUE when waiting for an obex response */
     BOOLEAN                     sdp_pending;   /* TRUE when waiting for SDP to complete */
     tWICED_BT_PBC_PM_STATE      pm_state;      /* power management state */
-
+#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
     wiced_bt_pbc_sup_fea_mask_t   local_features; /* Local supported features */
-
+#endif
     wiced_bt_pbc_sup_fea_mask_t     peer_features;      /* Peer supported features */
     tWICED_BT_PBC_SUP_REPOSIT_MASK  peer_repositories;  /* Peer supported repositories */
 } wiced_bt_pbc_cb_t;

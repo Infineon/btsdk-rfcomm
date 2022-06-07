@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -408,8 +408,9 @@ static void wiced_bt_pbc_api_enable(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t
         p_cb->app_id = p_data->api_enable.app_id;
         p_cb->fd = WICED_BT_PBC_INVALID_FD;
         p_cb->is_enabled = TRUE;
-
+#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
         p_cb->local_features = p_data->api_enable.local_features;
+#endif
         wiced_bt_pbc_sdp_register(p_cb);
     }
 

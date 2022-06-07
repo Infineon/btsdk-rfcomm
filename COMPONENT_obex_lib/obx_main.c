@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -407,8 +407,8 @@ void obx_cl_free_cb(tOBEX_CL_CB * p_cb)
 #ifdef OBEX_LIB_L2CAP_INCLUDED
             else
             {
-                OBEX_TRACE_DEBUG0("setting l2c_map id %d to 0", (p_cb->ll_cb.l2c.lcid - L2CAP_BASE_APPL_CID) % MAX_L2CAP_CHANNELS);
-                obx_cb.l2c_map[(p_cb->ll_cb.l2c.lcid - L2CAP_BASE_APPL_CID) % MAX_L2CAP_CHANNELS] = 0;
+                OBEX_TRACE_DEBUG0("setting l2c_map lcid %d to 0", p_cb->ll_cb.l2c.lcid);
+                obx_free_l2c_map_entry(p_cb->ll_cb.l2c.lcid);
             }
 #endif
         }
@@ -723,8 +723,8 @@ void obx_sr_free_cb(tOBEX_HANDLE handle)
 #ifdef OBEX_LIB_L2CAP_INCLUDED
                     else
                     {
-                        OBEX_TRACE_DEBUG0("setting l2c_map id %d to 0", (p_scb->ll_cb.l2c.lcid - L2CAP_BASE_APPL_CID) % MAX_L2CAP_CHANNELS);
-                        obx_cb.l2c_map[(p_scb->ll_cb.l2c.lcid - L2CAP_BASE_APPL_CID) % MAX_L2CAP_CHANNELS] = 0;
+                        OBEX_TRACE_DEBUG0("setting l2c_map lcid %d to 0", p_scb->ll_cb.l2c.lcid);
+                        obx_free_l2c_map_entry(p_scb->ll_cb.l2c.lcid);
                     }
 #endif
                 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -127,10 +127,10 @@ void wiced_bt_mce_disable(void)
 *******************************************************************************/
 void wiced_bt_mce_mn_start(UINT8 sec_mask, const char *p_service_name, const UINT8 scn, const UINT16 psm, wiced_bt_ma_supported_features_t features)
 {
-    wiced_mce_api_mn_start_t *p_msg;
-
-    if ((p_msg = (wiced_mce_api_mn_start_t *)GKI_getbuf(sizeof(wiced_mce_api_mn_start_t))) != NULL)
+    wiced_mce_data_t *p_mce_data;
+    if ((p_mce_data = (wiced_mce_data_t *)GKI_getbuf((UINT16)sizeof(wiced_mce_data_t))) != NULL)
     {
+        wiced_mce_api_mn_start_t *p_msg = &(p_mce_data->api_start);
         APPL_TRACE_API0("wiced_bt_mce_mn_start\n");
         memset (p_msg, 0, sizeof(wiced_mce_api_mn_start_t));
 
@@ -142,8 +142,10 @@ void wiced_bt_mce_mn_start(UINT8 sec_mask, const char *p_service_name, const UIN
 
         p_msg->scn = scn;
         p_msg->psm = psm;
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
         p_msg->mce_local_features = features;
-        wiced_mce_send_event((BT_HDR *)p_msg);
+#endif
+        wiced_mce_send_event((BT_HDR *)p_mce_data);
     }
 }
 
@@ -576,6 +578,7 @@ void wiced_bt_mce_get_msg(wiced_bt_ma_sess_handle_t session_id, wiced_bt_ma_get_
 *******************************************************************************/
 void wiced_bt_mce_get_mas_instance_info(wiced_bt_ma_sess_handle_t session_id, wiced_bt_ma_inst_id_t mas_instance_id)
 {
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
     wiced_mce_api_get_mas_ins_info_t   *p_msg;
 
     if ((p_msg = (wiced_mce_api_get_mas_ins_info_t *)GKI_getbuf(sizeof(wiced_mce_api_get_mas_ins_info_t))) != NULL)
@@ -590,6 +593,7 @@ void wiced_bt_mce_get_mas_instance_info(wiced_bt_ma_sess_handle_t session_id, wi
 
         wiced_mce_send_event((BT_HDR *)p_msg);
     }
+#endif
 }
 
 /*******************************************************************************

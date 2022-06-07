@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -74,7 +74,10 @@ static void obx_l2c_congestion_ind_cback(UINT16 lcid, BOOLEAN is_congested);
 static tOBEX_SR_SESS_CB *obx_lcb_2_sr_sess_cb(tOBEX_L2C_CB *p_lcb);
 static void obx_l2c_cl_connect_ind_cback(void *context,wiced_bt_device_address_t bd_addr, UINT16 lcid, UINT16 peer_mtu);
 static void obx_l2c_checks_ch_flags (tOBEX_L2C_CB     *p_lcb);
-static BOOLEAN check_l2c_map();
+static int obx_alloc_l2c_map_entry(void);
+static tOBEX_HANDLE obx_lcid_to_handle(uint16_t lcid);
+void obx_free_l2c_map_entry(uint16_t lcid);
+
 #define tL2CAP_ERTM_INFO wiced_bt_l2cap_ertm_information_t
 
 /* This option is application when OBEX over L2CAP is in use
@@ -352,6 +355,7 @@ void obx_sr_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg)
 
     tOBEX_EVT_PARAM  param;
     tOBEX_SR_CB      *p_cb;
+    int              l2c_map_index = -1;
 
     OBEX_TRACE_DEBUG0("obx sr proc l2c evt");
     if (p_msg == NULL || p_msg->p_l2cb == NULL)
@@ -368,8 +372,11 @@ void obx_sr_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg)
             && (obx_sr_cb_by_psm(p_ind->psm) != NULL))
         {
             OBEX_TRACE_DEBUG0("obx sr proc l2c evt found p_scb");
-            if (check_l2c_map() == WICED_FALSE)
+
+            l2c_map_index = obx_alloc_l2c_map_entry();
+            if (l2c_map_index == -1)
             {
+                OBEX_TRACE_ERROR0("obx_sr_proc_l2c_evt failed to find l2c mapping table index");
                 return;
             }
 
@@ -381,8 +388,9 @@ void obx_sr_proc_l2c_evt (tOBEX_L2C_EVT_MSG *p_msg)
             /* store LCID */
             p_lcb->lcid = p_ind->lcid;
 
-            obx_cb.l2c_map[(p_ind->lcid - L2CAP_BASE_APPL_CID) % MAX_L2CAP_CHANNELS] = p_lcb->handle;
-            OBEX_TRACE_DEBUG2("l2c_map[%d]=0x%x\n", (p_ind->lcid - L2CAP_BASE_APPL_CID) % MAX_L2CAP_CHANNELS, p_lcb->handle );
+            obx_cb.l2c_map[l2c_map_index].lcid = p_lcb->lcid;
+            obx_cb.l2c_map[l2c_map_index].obx_handle = p_lcb->handle;
+            OBEX_TRACE_DEBUG2("l2c_map[%d] lcid 0x%x obx_handle 0x%x\n", l2c_map_index, p_lcb->lcid, p_lcb->handle );
 
             /* transition to configuration state */
             p_lcb->ch_state = OBEX_CH_CFG;
@@ -600,7 +608,7 @@ tOBEX_L2C_CB * obx_lcid_2lcb(UINT16 lcid)
 
     /* this function is called by obx_rfc_cback() only.
      * assume that port_handle is within range */
-    obx_handle  = obx_cb.l2c_map[(lcid-L2CAP_BASE_APPL_CID)% MAX_L2CAP_CHANNELS];
+    obx_handle  = obx_lcid_to_handle(lcid);
     obx_mskd_handle = obx_handle & OBEX_HANDLE_MASK;
     OBEX_TRACE_DEBUG3("obx_lcid_2lcb lcid:0x%x obx_handle:0x%x obx_mskd_handle:0x%x\n",
         lcid, obx_handle, obx_mskd_handle);
@@ -909,8 +917,9 @@ static void obx_l2c_disconnect_ind_cback(void *context, UINT16 lcid, BOOLEAN ack
 
         evt_param.any = 0;
         obx_l2c_snd_evt (p_lcb, evt_param, OBEX_L2C_EVT_CLOSE);
+
         if ((p_lcb->handle & OBEX_CL_HANDLE_MASK)  == 0)
-            obx_cb.l2c_map[(lcid - L2CAP_BASE_APPL_CID) % MAX_L2CAP_CHANNELS] = 0;
+            obx_free_l2c_map_entry(lcid);
     }
 }
 
@@ -959,16 +968,16 @@ static void obx_l2c_data_ind_cback(void *context, uint16_t lcid, uint8_t *p_buf,
 #endif
     OBEX_TRACE_DEBUG2("data ind cback hdr created lcid %d len %d", lcid, buf_len);
 
-    hdr = (BT_HDR *)GKI_getpoolbuf(HCI_ACL_POOL_ID);
-    if (hdr == NULL)
-    {
-        OBEX_TRACE_DEBUG0("No free buffer available !! Dropping data");
-        return;
-    }
-    memset(hdr,0,GKI_get_pool_bufsize(HCI_ACL_POOL_ID));
     /* look up lcb for this channel */
     if ((p_lcb = obx_lcid_2lcb(lcid)) != NULL)
     {
+        hdr = (BT_HDR *)GKI_getpoolbuf(HCI_ACL_POOL_ID);
+        if (hdr == NULL)
+        {
+            OBEX_TRACE_DEBUG0("No free buffer available !! Dropping data");
+            return;
+        }
+        memset(hdr,0,GKI_get_pool_bufsize(HCI_ACL_POOL_ID));
         hdr->len = buf_len;
         hdr->offset = sizeof(tOBEX_RX_HDR);
         p = (UINT8 *)hdr;
@@ -1040,10 +1049,12 @@ tOBEX_STATUS obx_open_l2c(tOBEX_CL_CB *p_cl_cb, const BD_ADDR bd_addr)
     wiced_bt_l2cap_cfg_information_t cfg;
     tL2CAP_ERTM_INFO ertm_info;
     OBEX_TRACE_DEBUG2("obx_open_l2c rxmtu:%d, cbmtu:%d\n", p_l2cb->rx_mtu, max_mtu );
+    int l2c_map_index = 0;
 
-
-    if (check_l2c_map() == WICED_FALSE)
+    l2c_map_index = obx_alloc_l2c_map_entry();
+    if (l2c_map_index == -1)
     {
+        OBEX_TRACE_ERROR0("obx_open_l2c failed to alloc free l2c mapping table entry");
         return OBEX_NO_RESOURCES;
     }
 
@@ -1089,7 +1100,8 @@ tOBEX_STATUS obx_open_l2c(tOBEX_CL_CB *p_cl_cb, const BD_ADDR bd_addr)
 
     if (status == OBEX_SUCCESS)
     {
-        obx_cb.l2c_map[(p_l2cb->lcid - L2CAP_BASE_APPL_CID)% MAX_L2CAP_CHANNELS] = p_l2cb->handle;
+        obx_cb.l2c_map[l2c_map_index].lcid = p_l2cb->lcid;
+        obx_cb.l2c_map[l2c_map_index].obx_handle = p_l2cb->handle;
         p_l2cb->p_send_fn = (tOBEX_SEND_FN *)obx_l2c_snd_msg;
         p_l2cb->p_close_fn = obx_close_l2c;
     }
@@ -1146,26 +1158,57 @@ BOOLEAN obx_l2c_snd_msg(tOBEX_LL_CB *p_l2cb)
     return sent;
 }
 
-static BOOLEAN check_l2c_map()
+static int obx_alloc_l2c_map_entry(void)
 {
-    uint8_t ind = 0;
-    for (ind = 0; ind < MAX_L2CAP_CHANNELS; ind++)
+    /*
+     * l2c_mapping_table entry allocation is not thread safe.
+     * Use in cauation for multi-threading.
+     */
+    int index;
+
+    for (index = 0; index < MAX_L2CAP_CHANNELS; index++)
     {
-        if (obx_cb.l2c_map[ind] == 0)
+        if (obx_cb.l2c_map[index].lcid == 0)
         {
-            break;
+            return index;
         }
     }
-    OBEX_TRACE_DEBUG0("check_l2c_map ind is %d", ind);
-    if (ind == MAX_L2CAP_CHANNELS)
+
+    OBEX_TRACE_WARNING0("obx_l2c_map: NO free entry\n");
+    return -1;
+}
+
+static tOBEX_HANDLE obx_lcid_to_handle(uint16_t lcid)
+{
+    int index = 0;
+
+    for (index = 0; index < MAX_L2CAP_CHANNELS; index++)
     {
-        OBEX_TRACE_ERROR0("no l2c_map slots available\n");
-        return WICED_FALSE;
+        if (obx_cb.l2c_map[index].lcid == lcid)
+        {
+            return obx_cb.l2c_map[index].obx_handle;
+        }
     }
-    else
+
+    OBEX_TRACE_WARNING0("obx_lcid_to_handle: NO match\n");
+    return 0;
+}
+
+void obx_free_l2c_map_entry(uint16_t lcid)
+{
+    int index = 0;
+
+    for (index = 0; index < MAX_L2CAP_CHANNELS; index++)
     {
-        return WICED_TRUE;
+        if (obx_cb.l2c_map[index].lcid == lcid)
+        {
+            obx_cb.l2c_map[index].lcid = 0;
+            obx_cb.l2c_map[index].obx_handle = 0;
+            return;
+        }
     }
+
+    OBEX_TRACE_WARNING0("obx_free_l2c_map_entry: No match, freed already?\n");
 }
 
 #endif  /* OBEX_LIB_L2CAP_INCLUDED */

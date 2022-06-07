@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -78,10 +78,9 @@ extern void spp_rfcomm_control_callback(uint32_t port_status, uint16_t port_hand
 
 // Session control block.  Currently support 1.
 spp_scb_t   spp_scb[SPP_MAX_CONNECTIONS];
+wiced_bool_t spp_initialized = WICED_FALSE;
 
-#if defined(CYW20819A1) || defined (CYW20820A1)
 wiced_port_status_t spp_port_status;
-#endif
 
 BD_ADDR     bd_addr_connected;
 
@@ -121,6 +120,12 @@ static spp_scb_t*   spp_lib_find_scb_by_bdaddr(BD_ADDR bd_addr);
 wiced_result_t wiced_bt_spp_startup(wiced_bt_spp_reg_t* p)
 {
     uint8_t i = 0;
+
+    if (!spp_initialized)
+    {
+        memset(spp_scb, 0, sizeof(spp_scb));
+        spp_initialized = WICED_TRUE;
+    }
 
     while( i < SPP_MAX_CONNECTIONS )
     {
@@ -501,6 +506,8 @@ void spp_sdp_start_discovery(spp_scb_t *p_scb)
     /* initiate service discovery */
     if ((result == WICED_FALSE) || (!wiced_bt_sdp_service_search_attribute_request(p_scb->server_addr, (wiced_bt_sdp_discovery_db_t *)p_scb->p_sdp_discovery_db, &spp_sdp_cback)))
     {
+        WICED_BT_TRACE("spp_sdp_start_discovery - Not started. prior db_init result=%d\n", result);
+
         /* Service discovery not initiated - free discover db, reopen server, tell app  */
         spp_sdp_free_db(p_scb);
 
@@ -570,7 +577,6 @@ uint8_t wiced_bt_spp_port_purge(uint16_t handle, uint8_t purge_flags)
     return PORT_Purge(handle, purge_flags);
 }
 
-#if defined(CYW20819A1) || defined (CYW20820A1)
 /*
  * get the rfcomm peer_mtu
  */
@@ -588,4 +594,3 @@ uint16_t wiced_bt_spp_rfcomm_get_peer_mtu(uint16_t handle)
 
     return 0;
 }
-#endif

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -655,6 +655,7 @@ void wiced_mce_proc_get_msg_rsp(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *
     }
 }
 
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
 /*******************************************************************************
 **
 ** Function         wiced_mce_proc_get_mas_ins_info_rsp
@@ -712,6 +713,7 @@ void wiced_mce_proc_get_mas_ins_info_rsp(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce
     utl_freebuf((void**)&p_data->obx_evt.p_pkt);
     p_cb->p_cback(WICED_BT_MCE_GET_MAS_INS_INFO, (wiced_bt_mce_t *)&app_evt);
 }
+#endif /* #if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE) */
 
 #if 0
 /*******************************************************************************
@@ -1004,10 +1006,12 @@ BOOLEAN wiced_mce_find_ma_cb_indexes(wiced_mce_data_t *p_msg, UINT8 *p_ccb_idx, 
                 *p_ccb_idx = p_msg->sdp_result.ccb_idx;
             }
             break;
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
         case WICED_MCE_API_GET_MAS_INS_INFO_EVT:
             if (wiced_mce_find_obx_handle_match_ma_cb_indexes(p_msg->api_get_mas_ins_info.hdr.layer_specific, p_ccb_idx, p_icb_idx))
                 found = TRUE;
             break;
+#endif
         case WICED_MCE_MA_OBX_ABORT_RSP_EVT:
         case WICED_MCE_MA_OBX_CONN_RSP_EVT:
         case WICED_MCE_MA_OBX_PUT_RSP_EVT:

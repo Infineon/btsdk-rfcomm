@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -398,6 +398,7 @@ void wiced_bt_pbc_get_listing(wiced_bt_pbc_cb_t *p_cb, char *p_name, wiced_bt_pb
                 UINT16_TO_BE_STREAM(p, p_param->list_start_offset);
             }
 
+#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
             /* Add APH resetnewmissedcalls with value 1 to reset NMC */
             if ((p_param->is_reset_miss_calls == TRUE) && (p_cb->peer_features & WICED_BT_PBC_SUP_FEA_ENH_MISSED_CALLS)
                 && (p_cb->local_features & WICED_BT_PBC_SUP_FEA_ENH_MISSED_CALLS))
@@ -422,6 +423,7 @@ void wiced_bt_pbc_get_listing(wiced_bt_pbc_cb_t *p_cb, char *p_name, wiced_bt_pb
                 }
 
             }
+#endif
 
             /* If any of the app param header is added */
             if (p != p_start)

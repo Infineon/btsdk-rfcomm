@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -103,7 +103,9 @@ enum
     WICED_MCE_API_CHDIR_EVT,              /* Set folder */
     WICED_MCE_API_LIST_EVT,               /* Get msg/folder listing request */
     WICED_MCE_API_GET_MSG_EVT,            /* Get message request */
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
     WICED_MCE_API_GET_MAS_INS_INFO_EVT,   /* Get MAS instance info request */
+#endif
     WICED_MCE_API_SET_STS_EVT,            /* API set message status request */
     WICED_MCE_API_PUSH_EVT,               /* API push message request */
 
@@ -162,7 +164,9 @@ typedef UINT16 wiced_mce_int_evt_t;
 #define WICED_MCE_OP_NOTIF_REG    7
 #define WICED_MCE_OP_SET_MSG_STS  8
 #define WICED_MCE_OP_UPD_INBOX    9
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
 #define WICED_MCE_OP_GET_MAS_INS_INFO     10
+#endif
 
 /* Response Timer Operations */
 #define WICED_MCE_TIMER_OP_STOP   0
@@ -334,12 +338,14 @@ typedef struct
     wiced_bt_ma_get_msg_param_t param;
 } wiced_mce_api_get_msg_t;
 
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
 /* data structure for get MAS instance information API call */
 typedef struct
 {
     BT_HDR                  hdr;
     wiced_bt_ma_inst_id_t   mas_instance_id;
 }wiced_mce_api_get_mas_ins_info_t;
+#endif
 
 /* Set message status data structure */
 typedef struct
@@ -384,7 +390,9 @@ typedef union
     wiced_mce_api_setfolder_t  api_setfolder;
     wiced_mce_api_list_t       api_list;
     wiced_mce_api_get_msg_t    api_getmsg;
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
     wiced_mce_api_get_mas_ins_info_t   api_get_mas_ins_info;
+#endif
     wiced_mce_api_set_sts_t    api_setstatus;
     wiced_mce_sdp_evt_t        sdp_result;
     wiced_mce_api_push_msg_t   api_push_msg;
@@ -424,7 +432,9 @@ typedef struct
     wiced_bt_ma_frac_req_t  frac_req;
     BOOLEAN                 req_pending;    /* TRUE when waiting for an obex response */
     wiced_bt_ma_inst_id_t   inst_id;
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
     wiced_bt_ma_mas_ins_info_t    mas_ins_info;   /* MAS instance description*/
+#endif
     BOOLEAN                 in_use;
     wiced_bt_ma_supported_features_t mce_peer_features; /*  peer MA feature, doesn't need to be part of MAP_1_2 */
     BOOLEAN                 sdp_pending;
@@ -446,7 +456,9 @@ typedef struct
     char                    *p_devname;
     wiced_mce_inst_cb_t     icb[WICED_BT_MCE_NUM_INST]; /* An array of instance control block */
     UINT8                   active_count;           /* Number of active instance control block */
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
     wiced_bt_ma_inst_id_t         get_mas_inst_id;        /* Instance ID of the get mas instance info */
+#endif
 } wiced_mce_ma_cb_t;
 
 typedef struct
@@ -490,8 +502,10 @@ typedef struct
     wiced_bt_obex_handle_t  mn_obx_handle;
     UINT32                  mn_sdp_handle;          /* SDP record handle for MNS */
     UINT8                   mn_scn;                 /* SCN for MNS */
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
     UINT16                  mn_psm;                 /* PSM for Obex Over L2CAP [MAP 1.2] */
     wiced_bt_ma_supported_features_t mce_local_features; /* local MN supported features */
+#endif
 } wiced_mce_cb_t;
 
 
@@ -544,7 +558,9 @@ extern void wiced_mce_ma_upd_inbox(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_
 extern void wiced_mce_ma_chdir(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_data);
 extern void wiced_mce_ma_list(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_data);
 extern void wiced_mce_ma_get_msg(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_data);
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
 extern void wiced_mce_ma_get_mas_ins_info(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_data);
+#endif
 extern void wiced_mce_ma_set_sts(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_data);
 extern void wiced_mce_ma_trans_cmpl(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_data);
 extern void wiced_mce_ma_ci_write(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_data);
@@ -567,7 +583,9 @@ extern void wiced_mce_proc_put_rsp(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_
 extern void wiced_mce_proc_push_msg_rsp(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_data);
 extern void wiced_mce_proc_get_list_rsp(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_obx_evt_t *p_evt);
 extern void wiced_mce_proc_get_msg_rsp(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_data);
+#if (defined(BTA_MAP_1_2_SUPPORTED) && BTA_MAP_1_2_SUPPORTED == TRUE)
 extern void wiced_mce_proc_get_mas_ins_info_rsp(UINT8 ccb_idx, UINT8 icb_idx, wiced_mce_data_t *p_data);
+#endif
 extern void wiced_mce_ma_update_pm_state(UINT8 ccb_idx, UINT8 icb_idx);
 extern void wiced_mce_mn_update_pm_state(wiced_mce_cb_t *p_cb, UINT8 scb_idx);
 extern void wiced_mce_disable_complete(wiced_mce_cb_t *p_cb);

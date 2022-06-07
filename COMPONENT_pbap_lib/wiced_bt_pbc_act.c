@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -237,6 +237,7 @@ void wiced_bt_pbc_init_getfile(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
                     {
                         *p++    = WICED_BT_PBC_APH_PROP_SELECTOR;
                         *p++    = 8;    /* Length field 8 */
+#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
                         if ((p_cb->local_features & WICED_BT_PBC_SUP_FEA_UCI_VCARD_FIELD) &&
                             (p_cb->peer_features & WICED_BT_PBC_SUP_FEA_UCI_VCARD_FIELD))
                         {
@@ -254,6 +255,7 @@ void wiced_bt_pbc_init_getfile(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
                         {
                             p_param->filter |= WICED_BT_PBC_FILTER_PHOTO;
                         }
+#endif
                         UINT64_TO_BE_STREAM(p, p_param->filter);
                     }
                     if (p_param->format < WICED_BT_PBC_FORMAT_MAX)
@@ -270,7 +272,7 @@ void wiced_bt_pbc_init_getfile(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
                     *p++    = WICED_BT_PBC_APH_MAX_LIST_COUNT;
                     *p++    = 2;    /* Length field 2 */
                     UINT16_TO_BE_STREAM(p, p_param->max_list_count);
-
+#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
                     /* Add APH resetnewmissedcalls with value 1 to reset NMC */
                     if ((p_param->is_reset_miss_calls == TRUE) && (p_cb->peer_features & WICED_BT_PBC_SUP_FEA_ENH_MISSED_CALLS)
                         && (p_cb->local_features & WICED_BT_PBC_SUP_FEA_ENH_MISSED_CALLS))
@@ -296,7 +298,7 @@ void wiced_bt_pbc_init_getfile(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
 
                     }
 
-
+#endif
                     if (p_param->list_start_offset)
                     {
                         *p++    = WICED_BT_PBC_APH_LIST_STOFF;
@@ -985,13 +987,11 @@ void wiced_bt_pbc_start_client(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
     wiced_bt_pbc_obx_pkt_t *p_obx = &p_cb->obx;
     wiced_bt_obex_status_t      status = OBEX_NO_RESOURCES;
 
-
+#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
     BOOLEAN         use_srm = TRUE;
     wiced_bt_obex_triplet_t app_param;
     UINT8           buf[4], *p;
-
-
-
+#endif
 
     /* save peer supported features */
     WICED_BT_TRACE("wiced_bt_pbc_start_client peer_features = 0x%08x peer_repositories = 0x%02x",
@@ -1006,7 +1006,7 @@ void wiced_bt_pbc_start_client(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
         {
             wiced_bt_obex_add_header((UINT8 *)p_obx->p_pkt, OBEX_HI_TARGET, (UINT8 *)WICED_BT_PBC_PB_ACCESS_TARGET_UUID,
                              WICED_BT_PBC_UUID_LENGTH);
-
+#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
             /* Add supported features only if peer SDP returns support features */
             if (p_data->sdp_ok.is_peer_features_present)
             {
@@ -1017,9 +1017,10 @@ void wiced_bt_pbc_start_client(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
                 app_param.p_array = (UINT8*) buf;
                 wiced_bt_obex_add_triplet_header((UINT8 *)p_obx->p_pkt, OBEX_HI_APP_PARMS, &app_param, 1);
             }
-
+#endif
         }
 
+#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
         if ((status = wiced_bt_obex_alloc_session (NULL, p_data->sdp_ok.scn,
                                         &p_data->sdp_ok.psm,
                                         wiced_bt_pbc_obx_cback,
@@ -1033,6 +1034,17 @@ void wiced_bt_pbc_start_client(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
             }
         }
 
+#else   /* Version 1.1 or earlier so we are good to go */
+        /* set security level */
+
+        //TODO Need security level setting
+
+        wiced_bt_obex_connect(p_cb->bd_addr, p_data->sdp_ok.scn, OBEX_MAX_MTU,
+                       wiced_bt_pbc_obx_cback, &p_cb->obx_handle, (UINT8 *)p_obx->p_pkt);
+        p_obx->p_pkt = NULL;    /* OBX will free the memory */
+
+        status = OBEX_SUCCESS;
+#endif
     }
 
     /* Something failed along the way */
@@ -1092,10 +1104,13 @@ void wiced_bt_pbc_find_service(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
     //tSDP_UUID   uuid_list;
     wiced_bt_uuid_t             uuid_list;
 
-
+#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
     UINT16      attr_list[6];
     UINT16      num_attrs = 6;
-
+#else
+    UINT16      attr_list[5];
+    UINT16      num_attrs = 5;
+#endif
     tWICED_BT_SERVICE_MASK   pbc_services = (WICED_BT_PBAP_SERVICE_MASK);
 
     /* Make sure at least one service was specified */
@@ -1109,9 +1124,11 @@ void wiced_bt_pbc_find_service(wiced_bt_pbc_cb_t *p_cb, wiced_bt_pbc_data_t *p_d
             /* always search peer features */
             attr_list[3] = ATTR_ID_SUPPORTED_FEATURES_32;
 
+#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
             attr_list[4] = ATTR_ID_OBX_OVR_L2CAP_PSM;
             attr_list[5] = ATTR_ID_SUPPORTED_REPOSITORIES;
 
+#endif
             uuid_list.len = LEN_UUID_16;
 
             if (p_cb->services & WICED_BT_PBAP_SERVICE_MASK)
@@ -1330,7 +1347,7 @@ static void wiced_bt_pbc_sdp_cback(UINT16 status)
             {
                 WICED_BT_TRACE("wiced_bt_pbc_sdp_cback peer supported repositories not found use default");
             }
-
+#if (defined(WICED_BT_PBAP_1_2_SUPPORTED) && WICED_BT_PBAP_1_2_SUPPORTED == TRUE)
             /* If profile version is 1.2 or greater, look for supported features and L2CAP PSM */
             if (version >= WICED_BT_PBC_VERSION_1_2)
             {
@@ -1377,6 +1394,7 @@ static void wiced_bt_pbc_sdp_cback(UINT16 status)
                 }
             }
 
+#endif /* WICED_BT_PBAP_1_2_SUPPORTED */
 
             /* get scn from proto desc list; if not found, go to next record */
             if (!found && wiced_bt_sdp_find_protocol_list_elem_in_rec(p_rec, UUID_PROTOCOL_RFCOMM, &pe))
