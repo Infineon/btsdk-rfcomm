@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2016-2023, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -943,6 +943,9 @@ static void obx_l2c_disconnect_cfm_cback(void *context, UINT16 lcid, UINT16 resu
     {
         evt_param.any = 0;
         obx_l2c_snd_evt (p_lcb, evt_param, OBEX_L2C_EVT_CLOSE);
+
+        if ((p_lcb->handle & OBEX_CL_HANDLE_MASK)  == 0)
+            obx_free_l2c_map_entry(lcid);
     }
 }
 
