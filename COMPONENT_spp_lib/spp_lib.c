@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2016-2024, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -369,6 +369,7 @@ void spp_rfcomm_closed(spp_scb_t *p_scb)
 
     p_scb->state = SPP_SESSION_STATE_IDLE;
     p_scb->rfc_conn_handle = 0;
+    p_scb->flow_control_on = 0;
 
     /* Reopen server if needed */
     spp_rfcomm_start_server(p_scb);
